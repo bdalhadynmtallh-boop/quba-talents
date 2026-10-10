@@ -32,10 +32,10 @@ export function RegistrationsDialog({
             initial={{
               name: review.name,
               grade: review.grade,
-              classroomId: review.classroomId,
-              primaryTalentId: review.primaryTalentId,
+              classroom: review.classroom,
+              primaryTalent: review.primaryTalent,
               notes: review.description,
-              additionalTalentIds: review.additionalTalentIds,
+              additionalTalents: review.additionalTalents,
               skills: [],
               achievements: [],
               supervisorOverrides: null,

@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { listQuerySchema, studentSchema } from '@quba/shared';
+import { listQuerySchema, studentSubmissionSchema } from '@quba/shared';
 import { AppError } from '../../lib/errors.js';
 import { paramId } from '../../lib/params.js';
 import { enqueueDeletion } from '../../services/storage/deletion.js';
 import { studentData, studentView } from './serialization.js';
-import { studentRelations, validateCatalog } from './catalog.js';
+import { studentRelations, resolveStudentSubmission } from './catalog.js';
 import { lockOpenYear, studentScope } from '../academic-years/service.js';
 export async function studentRoutes(app: FastifyInstance) {
   const protectedRoute = { preHandler: app.requireAdmin };
@@ -48,10 +48,10 @@ export async function studentRoutes(app: FastifyInstance) {
     return studentView(student);
   });
   app.post('/students', protectedRoute, async (request, reply) => {
-    const input = studentSchema.parse(request.body);
+    const submitted = studentSubmissionSchema.parse(request.body);
     const student = await app.db.$transaction(async (tx) => {
       const year = await lockOpenYear(tx);
-      await validateCatalog(tx, input);
+      const input = await resolveStudentSubmission(tx, submitted);
       return tx.student.create({
         data: { ...studentData(input), academicYearId: year.id },
         include: studentRelations,
@@ -60,7 +60,7 @@ export async function studentRoutes(app: FastifyInstance) {
     return reply.code(201).send(studentView(student));
   });
   app.put('/students/:studentId', protectedRoute, async (request) => {
-    const input = studentSchema.parse(request.body);
+    const submitted = studentSubmissionSchema.parse(request.body);
     const id = paramId(request.params, 'studentId');
     return app.db.$transaction(async (tx) => {
       await lockOpenYear(tx);
@@ -69,13 +69,13 @@ export async function studentRoutes(app: FastifyInstance) {
         where: { id },
         include: studentRelations,
       });
-      if (previous.status === 'ARCHIVED' && input.grade !== 'THIRD')
+      if (previous.status === 'ARCHIVED' && submitted.grade !== 'THIRD')
         throw new AppError(
           400,
           'ARCHIVED_GRADE',
           'الطالب المؤرشف يبقى في الصف الثالث. استخدم الاستعادة لإعادته للسنة الحالية.',
         );
-      await validateCatalog(tx, input, studentView(previous));
+      const input = await resolveStudentSubmission(tx, submitted, studentView(previous));
       const data = studentData(input);
       return studentView(
         await tx.student.update({

@@ -92,8 +92,8 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   await page.goto('/register');
   await page.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} أحمد`);
   await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
-  await page.getByLabel('الفصل', { exact: true }).selectOption({ label: 'أ' });
-  await page.getByLabel('الموهبة الرئيسية', { exact: true }).selectOption({ label: 'البرمجة' });
+  await page.getByLabel('الفصل', { exact: true }).fill('أ');
+  await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('البرمجة');
   await page.getByLabel('وصف مختصر للموهبة').fill('أحب البرمجة وتطوير المواقع التعليمية.');
   await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
   await expect(page.getByRole('heading', { name: 'وصلت موهبتك إلينا!' })).toBeVisible();

@@ -1,15 +1,15 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { studentSchema, gradeLabels, type StudentInput } from '@quba/shared';
+import { namedStudentSchema, gradeLabels, type NamedStudentInput } from '@quba/shared';
 import { Plus, X } from 'lucide-react';
 import { errorMessage } from '../../lib/api';
 import { SupervisorFields } from '../school/SupervisorFields';
-import { CatalogFields } from '../school/CatalogFields';
-const empty: StudentInput = {
+import { TalentEntryFields } from '../school/TalentEntryFields';
+const empty: NamedStudentInput = {
   name: '',
   grade: 'FIRST',
-  classroomId: '',
-  primaryTalentId: '',
-  additionalTalentIds: [],
+  classroom: '',
+  primaryTalent: '',
+  additionalTalents: [],
   skills: [],
   achievements: [],
   notes: '',
@@ -25,8 +25,8 @@ export function StudentForm({
   onSave,
   submitLabel = 'حفظ الطالب',
 }: {
-  initial?: StudentInput;
-  onSave: (value: StudentInput) => Promise<void>;
+  initial?: NamedStudentInput;
+  onSave: (value: NamedStudentInput) => Promise<void>;
   submitLabel?: string;
 }) {
   const input = initial ?? empty;
@@ -39,19 +39,19 @@ export function StudentForm({
     event.preventDefault();
     if (submitting.current) return;
     const data = new FormData(event.currentTarget);
-    const parsed = studentSchema.safeParse({
+    const parsed = namedStudentSchema.safeParse({
       name: data.get('name'),
       grade: data.get('grade'),
-      classroomId: data.get('classroomId'),
-      primaryTalentId: data.get('primaryTalentId'),
-      additionalTalentIds: data.getAll('additionalTalentIds'),
+      classroom: data.get('classroom'),
+      primaryTalent: data.get('primaryTalent'),
+      additionalTalents: lines(data.get('additionalTalents')),
       skills: lines(data.get('skills')),
       achievements,
       notes: String(data.get('notes') ?? ''),
       supervisorOverrides: overrides,
     });
     if (!parsed.success) {
-      setError('تحقق من الحقول المطلوبة وحدود النصوص.');
+      setError('تحقق من الحقول المطلوبة وحدود النصوص، ولا تكرر المواهب أو تتجاوز 10 مواهب إضافية.');
       return;
     }
     submitting.current = true;
@@ -85,7 +85,7 @@ export function StudentForm({
             </select>
           </label>
         </div>
-        <CatalogFields initial={initial} />
+        <TalentEntryFields initial={input} />
         <div className="form-row">
           <label className="field">
             المهارات (كل مهارة في سطر)

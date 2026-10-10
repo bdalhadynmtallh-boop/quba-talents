@@ -1,25 +1,29 @@
 import { useState, useRef, type FormEvent } from 'react';
-import { registrationSchema, gradeLabels } from '@quba/shared';
+import { namedRegistrationSchema, gradeLabels } from '@quba/shared';
 import { CheckCircle2 } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
 import { StatusPanel } from '../../components/ui/StatusPanel';
-import { CatalogFields } from '../school/CatalogFields';
+import { TalentEntryFields } from '../school/TalentEntryFields';
 export function RegistrationForm() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [success, setSuccess] = useState(false);
   const submitting = useRef(false);
-  const [available, setAvailable] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
     const form = new FormData(event.currentTarget);
-    const input = registrationSchema.safeParse({
+    const input = namedRegistrationSchema.safeParse({
       ...Object.fromEntries(form),
-      additionalTalentIds: form.getAll('additionalTalentIds'),
+      additionalTalents: String(form.get('additionalTalents') ?? '')
+        .split('\n')
+        .map((name) => name.trim())
+        .filter(Boolean),
     });
     if (!input.success) {
-      setError('تحقق من البيانات المطلوبة واكتب وصفًا من 10 أحرف على الأقل.');
+      setError(
+        'تحقق من الحقول المطلوبة، ولا تكرر المواهب أو تتجاوز 10 مواهب إضافية. اكتب وصفًا من 10 أحرف على الأقل.',
+      );
       return;
     }
     submitting.current = true;
@@ -72,7 +76,7 @@ export function RegistrationForm() {
             </select>
           </label>
         </div>
-        <CatalogFields publicForm onAvailability={setAvailable} />
+        <TalentEntryFields />
         <label className="field">
           وصف مختصر للموهبة
           <textarea
@@ -84,7 +88,7 @@ export function RegistrationForm() {
             required
           />
         </label>
-        <button className="button full" type="submit" disabled={!available}>
+        <button className="button full" type="submit">
           {busy ? 'جارٍ إرسال الطلب…' : 'إرسال طلب التسجيل'}
         </button>
       </fieldset>

@@ -1,5 +1,5 @@
 import type { Prisma } from '../../generated/prisma/client.js';
-import type { StudentInput } from '@quba/shared';
+import { catalogNameKey, type StudentInput } from '@quba/shared';
 import { AppError } from '../../lib/errors.js';
 
 export const studentRelations = {
@@ -13,6 +13,52 @@ export const registrationRelations = {
   primaryTalent: true,
   additionalTalents: { include: { talent: true }, orderBy: { sortOrder: 'asc' as const } },
 } satisfies Prisma.RegistrationRequestInclude;
+export async function resolveCatalogNames(
+  tx: Prisma.TransactionClient,
+  input: { classroom: string; primaryTalent: string; additionalTalents: string[] },
+  active: boolean,
+) {
+  // Public submissions add inactive entries for review, without changing existing school settings.
+  const classroom = await tx.classroom.upsert({
+    where: { schoolId_nameKey: { schoolId: 'school', nameKey: catalogNameKey(input.classroom) } },
+    create: { name: input.classroom, nameKey: catalogNameKey(input.classroom), active },
+    update: {},
+  });
+  const talents = [];
+  for (const name of [input.primaryTalent, ...input.additionalTalents]) {
+    talents.push(
+      await tx.talent.upsert({
+        where: { schoolId_nameKey: { schoolId: 'school', nameKey: catalogNameKey(name) } },
+        create: { name, nameKey: catalogNameKey(name), active },
+        update: {},
+      }),
+    );
+  }
+  return {
+    classroomId: classroom.id,
+    primaryTalentId: talents[0]!.id,
+    additionalTalentIds: talents.slice(1).map((talent) => talent.id),
+  };
+}
+export async function resolveStudentSubmission(
+  tx: Prisma.TransactionClient,
+  input: StudentInput | import('@quba/shared').NamedStudentInput,
+  previous?: StudentInput,
+): Promise<StudentInput> {
+  if ('classroom' in input) {
+    const { classroom, primaryTalent, additionalTalents, ...fields } = input;
+    const ids = await resolveCatalogNames(
+      tx,
+      { classroom, primaryTalent, additionalTalents },
+      true,
+    );
+    // Explicit admin entry may retain or accept an inactive entry without reactivating it globally.
+    await validateCatalog(tx, ids, ids);
+    return { ...fields, ...ids };
+  }
+  await validateCatalog(tx, input, previous);
+  return input;
+}
 export async function validateCatalog(
   tx: Prisma.TransactionClient,
   input: Pick<StudentInput, 'classroomId' | 'primaryTalentId' | 'additionalTalentIds'>,

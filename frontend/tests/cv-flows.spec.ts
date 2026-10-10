@@ -104,8 +104,9 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
   await page.goto('/register');
   await page.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} أحمد`);
   await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
-  await page.getByLabel('الفصل', { exact: true }).selectOption({ label: 'أ' });
-  await page.getByLabel('الموهبة الرئيسية', { exact: true }).selectOption({ label: 'البرمجة' });
+  await page.getByLabel('الفصل', { exact: true }).fill(`${prefix} أ`);
+  await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('البرمجة');
+  await page.getByLabel('مواهب إضافية (اختياري، كل موهبة في سطر، حتى 10)').fill(`العزف ${prefix}`);
   await page.getByLabel('وصف مختصر للموهبة').fill('أحب تطوير المشاريع التعليمية مع فريق المدرسة.');
   await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
   await expect(page.getByRole('heading', { name: 'وصلت موهبتك إلينا!' })).toBeVisible();
@@ -130,6 +131,11 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
     .getByRole('link', { name: 'عرض ملف الطالب' })
     .click();
   await page.getByRole('button', { name: 'تعديل الطالب', exact: true }).click();
+  await expect(page.getByLabel('الفصل', { exact: true })).toHaveValue(`${prefix} أ`);
+  await expect(page.getByLabel('الموهبة الرئيسية', { exact: true })).toHaveValue('البرمجة');
+  await expect(page.getByLabel('مواهب إضافية (اختياري، كل موهبة في سطر، حتى 10)')).toHaveValue(
+    `العزف ${prefix}`,
+  );
   await page
     .getByLabel('معلومات عن الطالب وإنجازاته')
     .fill('شارك في إعداد موقع تعليمي لمراجعة الرياضيات.');
@@ -326,8 +332,8 @@ test('Admin settings, fixed lists, Arabic search, yearly dashboard, rollover and
     const form = page.getByRole('dialog', { name: 'إضافة طالب' });
     await form.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} ${name} سنة`);
     await form.getByLabel('الصف', { exact: true }).selectOption(grade!);
-    await form.getByLabel('الفصل', { exact: true }).selectOption({ label: className });
-    await form.getByLabel('الموهبة الرئيسية', { exact: true }).selectOption({ label: talentName });
+    await form.getByLabel('الفصل', { exact: true }).fill(className);
+    await form.getByLabel('الموهبة الرئيسية', { exact: true }).fill(talentName);
     await form.getByRole('button', { name: 'حفظ الطالب', exact: true }).click();
     await expect(form).toHaveCount(0);
   }

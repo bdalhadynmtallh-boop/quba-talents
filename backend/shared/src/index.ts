@@ -114,6 +114,53 @@ export const registrationSchema = studentFieldsSchema
     message: 'لا تكرر الموهبة الرئيسية.',
     path: ['additionalTalentIds'],
   });
+const namedCatalogFields = {
+  classroom: z
+    .string()
+    .trim()
+    .min(1)
+    .max(30)
+    .refine((name) => !!catalogNameKey(name)),
+  primaryTalent: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .refine((name) => !!catalogNameKey(name)),
+  additionalTalents: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(2)
+        .max(80)
+        .refine((name) => !!catalogNameKey(name)),
+    )
+    .max(10)
+    .default([]),
+};
+function distinctTalentNames(value: { primaryTalent: string; additionalTalents: string[] }) {
+  const keys = [value.primaryTalent, ...value.additionalTalents].map(catalogNameKey);
+  return new Set(keys).size === keys.length;
+}
+export const namedStudentSchema = studentFieldsSchema
+  .omit({ classroomId: true, primaryTalentId: true, additionalTalentIds: true })
+  .extend(namedCatalogFields)
+  .strict()
+  .refine(distinctTalentNames, { message: 'لا تكرر المواهب.', path: ['additionalTalents'] });
+export const namedRegistrationSchema = z
+  .object({
+    name: studentFieldsSchema.shape.name,
+    grade: gradeSchema,
+    ...namedCatalogFields,
+    description: z.string().trim().min(10).max(1000),
+  })
+  .strict()
+  .refine(distinctTalentNames, { message: 'لا تكرر المواهب.', path: ['additionalTalents'] });
+// Accept older clients during a rolling deployment; stored relationships keep their IDs.
+export const studentSubmissionSchema = z.union([namedStudentSchema, studentSchema]);
+export const registrationSubmissionSchema = z.union([namedRegistrationSchema, registrationSchema]);
+export type NamedStudentInput = z.infer<typeof namedStudentSchema>;
 export const safeUrlSchema = z
   .string()
   .trim()
@@ -291,6 +338,7 @@ export interface StudentView extends StudentInput {
 export interface RegistrationView extends RegistrationInput {
   classroom: string;
   primaryTalent: string;
+  additionalTalents: string[];
   id: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   studentId: string | null;

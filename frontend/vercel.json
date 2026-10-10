@@ -4,5 +4,12 @@
   "installCommand": "cd .. && npm ci",
   "buildCommand": "cd .. && npm run build -w @quba/shared && npm run build -w @quba/web",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://quba-talents-api.onrender.com/api/:path*" },
+    {
+      "source": "/health/:path*",
+      "destination": "https://quba-talents-api.onrender.com/health/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

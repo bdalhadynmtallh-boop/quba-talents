@@ -3,7 +3,7 @@ import { MAX_ATTACHMENTS, workSchema } from '@quba/shared';
 import { AppError } from '../../lib/errors.js';
 import { paramId } from '../../lib/params.js';
 import { enqueueDeletion } from '../../services/storage/deletion.js';
-import type { StoredFile } from '../../services/storage/local.js';
+import type { StoredFile } from '../../services/storage/base.js';
 import { workView } from '../students/serialization.js';
 async function multipartInput(request: FastifyRequest, metadata: boolean) {
   let data: unknown;

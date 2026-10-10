@@ -24,6 +24,7 @@
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "@quba/shared": "*",
+    "@supabase/supabase-js": "2.117.3",
     "dotenv": "^17.2.3",
     "fastify": "^5.12.5",
     "fastify-plugin": "^5.1.0",

@@ -11,6 +11,13 @@ const environmentSchema = z.object({
     .transform((value) => value || undefined)
     .optional(),
   STORAGE_DIR: z.string().default('.data/uploads'),
+  STORAGE_PROVIDER: z.enum(['local', 'supabase']).default('local'),
+  SUPABASE_URL: z.string().optional(),
+  SUPABASE_SERVICE_KEY: z.string().optional(),
+  SUPABASE_STORAGE_BUCKET: z
+    .string()
+    .regex(/^[a-z0-9-]{1,63}$/)
+    .default('quba-private'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.url(),
   COOKIE_SECRET: z.string().min(32),
@@ -31,5 +38,13 @@ export function loadEnvironment(): Environment {
     throw new Error('APP_ORIGIN يجب أن يكون أصلًا دون مسار أو شرطة أخيرة.');
   if (parsed.data.NODE_ENV === 'production' && !parsed.data.APP_ORIGIN.startsWith('https://'))
     throw new Error('الإنتاج يتطلب HTTPS.');
+  if (
+    parsed.data.STORAGE_PROVIDER === 'supabase' &&
+    (!parsed.data.SUPABASE_URL ||
+      !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(parsed.data.SUPABASE_URL) ||
+      !parsed.data.SUPABASE_SERVICE_KEY ||
+      parsed.data.SUPABASE_SERVICE_KEY.length < 20)
+  )
+    throw new Error('أكمل إعدادات Supabase الخاصة بالخادم.');
   return parsed.data;
 }

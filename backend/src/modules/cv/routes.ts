@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import {
   cvSchema,
@@ -196,7 +194,7 @@ export async function cvRoutes(
     if (!/^[-a-f0-9]{36}\.(png|jpg|webp)$/.test(school.logoKey))
       throw new AppError(500, 'LOGO', 'الشعار المخزن غير صالح.');
     try {
-      return `data:${school.logoMimeType};base64,${(await readFile(resolve(app.storage.root, school.logoKey))).toString('base64')}`;
+      return `data:${school.logoMimeType};base64,${(await app.storage.read(school.logoKey)).toString('base64')}`;
     } catch {
       throw new AppError(
         503,

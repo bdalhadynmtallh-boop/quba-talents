@@ -3,13 +3,24 @@ import multipart from '@fastify/multipart';
 import { FILE_LIMIT, MAX_ATTACHMENTS } from '@quba/shared';
 import type { Environment } from '../../config/env.js';
 import { LocalStorage } from './local.js';
+import { SupabaseStorage } from './supabase.js';
+import type { ManagedStorage } from './base.js';
 declare module 'fastify' {
   interface FastifyInstance {
-    storage: LocalStorage;
+    storage: ManagedStorage;
   }
 }
 export const storagePlugin = fp<{ env: Environment }>(async (app, { env }) => {
-  app.decorate('storage', new LocalStorage(env.STORAGE_DIR));
+  app.decorate<ManagedStorage>(
+    'storage',
+    env.STORAGE_PROVIDER === 'supabase'
+      ? new SupabaseStorage(
+          env.SUPABASE_URL!,
+          env.SUPABASE_SERVICE_KEY!,
+          env.SUPABASE_STORAGE_BUCKET,
+        )
+      : new LocalStorage(env.STORAGE_DIR),
+  );
   await app.register(multipart, {
     limits: {
       fileSize: FILE_LIMIT,
@@ -34,6 +45,7 @@ export const storagePlugin = fp<{ env: Environment }>(async (app, { env }) => {
     }
   };
   app.addHook('onReady', async () => {
+    await app.storage.initialize();
     await maintain();
     timer = setInterval(() => void maintain(), 60000);
     timer.unref();

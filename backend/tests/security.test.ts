@@ -9,6 +9,8 @@ import { hashPassword, verifyPassword } from '../src/lib/password.js';
 import { loginSchema, registrationSchema } from '@quba/shared';
 import type { Environment } from '../src/config/env.js';
 const env: Environment = {
+  STORAGE_PROVIDER: 'local',
+  SUPABASE_STORAGE_BUCKET: 'quba-private',
   AI_BASE_URL: '',
   AI_MODEL: 'qwen3.8-max',
   AI_TIMEOUT_MS: 60000,

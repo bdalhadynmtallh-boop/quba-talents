@@ -19,7 +19,7 @@ await writeFile(
 );
 await writeFile(
   'backend/.env',
-  `DATABASE_URL=postgresql://quba:${password}@localhost:5432/quba_talents\nCOOKIE_SECRET=${secret}\nNODE_ENV=development\nHOST=127.0.0.1\nPORT=3001\nAPP_ORIGIN=http://localhost:5186\nSESSION_HOURS=8\nSTORAGE_DIR=.data/uploads\n`,
+  `DATABASE_URL=postgresql://quba:${password}@127.0.0.1:5432/quba_talents\nCOOKIE_SECRET=${secret}\nNODE_ENV=development\nHOST=127.0.0.1\nPORT=3001\nAPP_ORIGIN=http://localhost:5186\nSESSION_HOURS=8\nSTORAGE_DIR=.data/uploads\n`,
   { flag: 'wx' },
 );
 console.log('أُنشئت الإعدادات المحلية عشوائيًا دون عرض الأسرار. إعداد المسؤول خطوة منفصلة.');

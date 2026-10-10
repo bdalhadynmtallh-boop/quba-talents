@@ -3,16 +3,21 @@ import { registrationSchema, gradeLabels } from '@quba/shared';
 import { CheckCircle2 } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
 import { StatusPanel } from '../../components/ui/StatusPanel';
+import { CatalogFields } from '../school/CatalogFields';
 export function RegistrationForm() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [success, setSuccess] = useState(false);
   const submitting = useRef(false);
+  const [available, setAvailable] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
     const form = new FormData(event.currentTarget);
-    const input = registrationSchema.safeParse(Object.fromEntries(form));
+    const input = registrationSchema.safeParse({
+      ...Object.fromEntries(form),
+      additionalTalentIds: form.getAll('additionalTalentIds'),
+    });
     if (!input.success) {
       setError('تحقق من البيانات المطلوبة واكتب وصفًا من 10 أحرف على الأقل.');
       return;
@@ -66,21 +71,8 @@ export function RegistrationForm() {
               ))}
             </select>
           </label>
-          <label className="field">
-            الفصل
-            <input name="classroom" placeholder="مثال: أ" required maxLength={30} />
-          </label>
         </div>
-        <label className="field">
-          الموهبة الرئيسية
-          <input
-            name="primaryTalent"
-            placeholder="ما المجال الذي تبدع فيه؟"
-            minLength={2}
-            maxLength={80}
-            required
-          />
-        </label>
+        <CatalogFields publicForm onAvailability={setAvailable} />
         <label className="field">
           وصف مختصر للموهبة
           <textarea
@@ -92,7 +84,7 @@ export function RegistrationForm() {
             required
           />
         </label>
-        <button className="button full" type="submit">
+        <button className="button full" type="submit" disabled={!available}>
           {busy ? 'جارٍ إرسال الطلب…' : 'إرسال طلب التسجيل'}
         </button>
       </fieldset>

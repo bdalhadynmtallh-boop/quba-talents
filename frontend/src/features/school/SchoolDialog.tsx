@@ -5,6 +5,8 @@ import { ResourceState } from '../../components/ui/ResourceState';
 import { api, errorMessage } from '../../lib/api';
 import { useResource } from '../../lib/useResource';
 import { SupervisorFields } from './SupervisorFields';
+import { AcademicYearSettings } from './AcademicYearSettings';
+import { CatalogSettings } from './CatalogSettings';
 function SchoolForm({ initial, onSaved }: { initial: SchoolView; onSaved: () => void }) {
   const [supervisors, setSupervisors] = useState(initial.supervisors),
     [busy, setBusy] = useState(false),
@@ -70,7 +72,7 @@ function SchoolForm({ initial, onSaved }: { initial: SchoolView; onSaved: () => 
         </label>
         <h3 className="form-section-title">المشرفون وترتيب أسمائهم</h3>
         <p className="form-footnote">
-          الأسماء التجريبية قابلة للاستبدال بالأسماء الحقيقية. يمكن تخصيص مشرفين من ملف الطالب.
+          أضف أسماء المشرفين الحقيقية. يمكن تخصيص مشرفين من ملف الطالب.
         </p>
         <SupervisorFields value={supervisors} onChange={setSupervisors} />
       </fieldset>
@@ -94,6 +96,8 @@ export function SchoolDialog({ onClose }: { onClose: () => void }) {
       ) : (
         resource.data && <SchoolForm initial={resource.data} onSaved={onClose} />
       )}
+      <AcademicYearSettings />
+      <CatalogSettings />
     </Modal>
   );
 }

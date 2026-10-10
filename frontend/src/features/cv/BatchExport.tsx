@@ -13,11 +13,25 @@ export function BatchExport({ selected, params }: { selected: string[]; params: 
       search: params.get('search') ?? '',
       ...(params.get('grade') ? { grade: params.get('grade') } : {}),
       ...(params.get('talent') ? { talent: params.get('talent') } : {}),
+      ...(params.get('classroomId') ? { classroomId: params.get('classroomId') } : {}),
+      ...(params.get('academicYearId') ? { academicYearId: params.get('academicYearId') } : {}),
+      ...(params.get('status') ? { status: params.get('status') } : {}),
+      ...(params.get('approved') ? { approved: params.get('approved') } : {}),
     };
     try {
       await downloadPdf('/cv/export', 'سير-الطلاب.pdf', {
         method: 'POST',
-        body: JSON.stringify(selection ? { studentIds: selected } : { filters }),
+        body: JSON.stringify(
+          selection
+            ? {
+                studentIds: selected,
+                scope: {
+                  ...(filters.academicYearId ? { academicYearId: filters.academicYearId } : {}),
+                  ...(filters.status ? { status: filters.status } : {}),
+                },
+              }
+            : { filters },
+        ),
       });
     } catch (e) {
       setError(errorMessage(e));

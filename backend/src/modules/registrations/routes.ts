@@ -1,15 +1,35 @@
 import type { FastifyInstance } from 'fastify';
-import { registrationSchema, registrationQuerySchema, studentSchema } from '@quba/shared';
+import {
+  registrationSchema,
+  registrationQuerySchema,
+  studentSchema,
+  normalizeArabic,
+} from '@quba/shared';
 import { AppError } from '../../lib/errors.js';
 import { paramId } from '../../lib/params.js';
 import { studentData } from '../students/serialization.js';
+import { validateCatalog, registrationRelations } from '../students/catalog.js';
+import { lockOpenYear } from '../academic-years/service.js';
 export async function registrationRoutes(app: FastifyInstance) {
   app.post(
     '/registrations',
     { config: { rateLimit: { max: 5, timeWindow: '1 hour' } } },
     async (request, reply) => {
       const input = registrationSchema.parse(request.body);
-      await app.db.registrationRequest.create({ data: input });
+      await app.db.$transaction(async (tx) => {
+        await lockOpenYear(tx);
+        await validateCatalog(tx, input);
+        const { additionalTalentIds, ...data } = input;
+        await tx.registrationRequest.create({
+          data: {
+            ...data,
+            nameSearch: normalizeArabic(input.name),
+            additionalTalents: {
+              create: additionalTalentIds.map((talentId, sortOrder) => ({ talentId, sortOrder })),
+            },
+          },
+        });
+      });
       return reply
         .code(201)
         .send({ message: 'وصل طلب تسجيل موهبتك بنجاح. سيقوم المسؤول بمراجعته.' });
@@ -24,11 +44,19 @@ export async function registrationRoutes(app: FastifyInstance) {
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
+        include: registrationRelations,
       }),
       app.db.registrationRequest.count({ where }),
     ]);
     return {
-      items,
+      items: items.map((item) => ({
+        ...item,
+        classroom: item.classroom.name,
+        primaryTalent: item.primaryTalent.name,
+        additionalTalentIds: item.additionalTalents.map((t) => t.talentId),
+        additionalTalents: undefined,
+        nameSearch: undefined,
+      })),
       page: query.page,
       pageSize: query.pageSize,
       total,
@@ -39,6 +67,7 @@ export async function registrationRoutes(app: FastifyInstance) {
     const id = paramId(request.params, 'id');
     const input = studentSchema.parse(request.body);
     return app.db.$transaction(async (tx) => {
+      const year = await lockOpenYear(tx);
       await tx.$queryRaw`SELECT id FROM "RegistrationRequest" WHERE id=${id}::uuid FOR UPDATE`;
       const registration = await tx.registrationRequest.findUnique({ where: { id } });
       if (!registration) throw new AppError(404, 'NOT_FOUND', 'طلب التسجيل غير موجود.');
@@ -46,7 +75,10 @@ export async function registrationRoutes(app: FastifyInstance) {
         return { studentId: registration.studentId, alreadyProcessed: true };
       if (registration.status !== 'PENDING')
         throw new AppError(409, 'REVIEWED', 'تمت مراجعة هذا الطلب مسبقًا.');
-      const student = await tx.student.create({ data: studentData(input) });
+      await validateCatalog(tx, input);
+      const student = await tx.student.create({
+        data: { ...studentData(input), academicYearId: year.id },
+      });
       await tx.registrationRequest.update({
         where: { id },
         data: {

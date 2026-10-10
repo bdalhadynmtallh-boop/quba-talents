@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api, errorMessage } from './api';
 export function useResource<T>(url: string) {
   const [revision, setRevision] = useState(0);
@@ -22,11 +22,12 @@ export function useResource<T>(url: string) {
     return () => controller.abort();
   }, [url, revision]);
   const current = state.url === url && state.revision === revision;
+  const reload = useCallback(() => setRevision((value) => value + 1), []);
   return {
     previousData: state.data,
     data: current ? state.data : null,
     error: current ? state.error : '',
     loading: !current,
-    reload: () => setRevision((value) => value + 1),
+    reload,
   };
 }

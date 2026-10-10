@@ -17,10 +17,14 @@ frontend/
 
 من جذر المشروع شغّل `npm run dev` لتشغيل الواجهة والخادم معًا. للتشغيل المنفصل بعد بناء shared: `npm run dev -w @quba/web`؛ تحتاج API تعمل على 3001. البناء في frontend/dist.
 
-لتعديل السيرة المعروضة: src/features/cv/CvPreview.tsx وCvEditor.tsx وstyles/cv.css. قالب PDF المطبوع مستقل في backend/src/services/pdf/template.ts.
+لتعديل السيرة المعروضة: src/features/cv/CvPaper.tsx (مشترك بين العرض والمعاينة المباشرة) وCvPreview.tsx وCvEditor.tsx وstyles/cv.css. قالب PDF المطبوع مستقل في backend/src/services/pdf/template.ts، والترويسة الرسمية مشتركة النص من @quba/shared.
+
+الرئيسية في src/pages/HomePage.tsx وstyles/home.css، مع دعم تقليل الحركة. مؤشر اكتمال توثيق الملف في src/features/students/ProfileCompletion.tsx، وليس تقييمًا للموهبة. نتائج مراجعة هذه التحسينات والصور وعينات PDF في [تقرير المراجعة](../backend/docs/REVIEW_2026-10-10.md).
 
 شعار الوزارة في src/assets/ministry-education.png نسخة من الأصل الرسمي الموثق في backend/assets/branding/README.md؛ لا يتطلب اتصالًا بموقع الوزارة. المخططات التي تستعملها الواجهة تأتي من حزمة @quba/shared داخل backend/shared.
 
 ## النشر
+
+إعدادات المدرسة تتضمن السنة الدراسية والفصول والمواهب وترتيبها وتعطيلها. النماذج تستخدم قوائم ثابتة، وصفحة الطلاب تعرض لوحة السنة المفتوحة وفلاتر السنة والأرشيف والفصل والموهبة. الإغلاق يعرض أعداد الترحيل قبل التأكيد، والاستعادة إجراء مستقل من ملف المؤرشف. التصدير الجماعي يتبع السنة والحالة المختارتين.
 
 الواجهة الإنتاجية: https://quba-talents.vercel.app . مسارات API وhealth تُوجّه إلى خادم Render الخاص بالمشروع؛ لا تُحفظ مفاتيح الخدمات في الواجهة.

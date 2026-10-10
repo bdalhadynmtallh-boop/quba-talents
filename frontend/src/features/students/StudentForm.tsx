@@ -3,12 +3,13 @@ import { studentSchema, gradeLabels, type StudentInput } from '@quba/shared';
 import { Plus, X } from 'lucide-react';
 import { errorMessage } from '../../lib/api';
 import { SupervisorFields } from '../school/SupervisorFields';
+import { CatalogFields } from '../school/CatalogFields';
 const empty: StudentInput = {
   name: '',
   grade: 'FIRST',
-  classroom: '',
-  primaryTalent: '',
-  additionalTalents: [],
+  classroomId: '',
+  primaryTalentId: '',
+  additionalTalentIds: [],
   skills: [],
   achievements: [],
   notes: '',
@@ -41,9 +42,9 @@ export function StudentForm({
     const parsed = studentSchema.safeParse({
       name: data.get('name'),
       grade: data.get('grade'),
-      classroom: data.get('classroom'),
-      primaryTalent: data.get('primaryTalent'),
-      additionalTalents: lines(data.get('additionalTalents')),
+      classroomId: data.get('classroomId'),
+      primaryTalentId: data.get('primaryTalentId'),
+      additionalTalentIds: data.getAll('additionalTalentIds'),
       skills: lines(data.get('skills')),
       achievements,
       notes: String(data.get('notes') ?? ''),
@@ -83,30 +84,9 @@ export function StudentForm({
               ))}
             </select>
           </label>
-          <label className="field">
-            الفصل
-            <input name="classroom" defaultValue={input.classroom} required maxLength={30} />
-          </label>
         </div>
-        <label className="field">
-          الموهبة الرئيسية
-          <input
-            name="primaryTalent"
-            defaultValue={input.primaryTalent}
-            required
-            minLength={2}
-            maxLength={80}
-          />
-        </label>
+        <CatalogFields initial={initial} />
         <div className="form-row">
-          <label className="field">
-            المواهب الإضافية (كل موهبة في سطر)
-            <textarea
-              name="additionalTalents"
-              defaultValue={input.additionalTalents.join('\n')}
-              rows={3}
-            />
-          </label>
           <label className="field">
             المهارات (كل مهارة في سطر)
             <textarea name="skills" defaultValue={input.skills.join('\n')} rows={3} />

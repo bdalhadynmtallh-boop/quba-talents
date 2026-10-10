@@ -6,6 +6,7 @@ import {
   cvEditSchema,
   cvRevisionSchema,
   cvBatchSchema,
+  listQuerySchema,
 } from '@quba/shared';
 import type { Environment } from '../../config/env.js';
 import { AppError } from '../../lib/errors.js';
@@ -13,6 +14,7 @@ import { paramId } from '../../lib/params.js';
 import { aiInput, type TextAi } from '../../services/ai/qwen.js';
 import type { PdfRenderer } from '../../services/pdf/chromium.js';
 import { cvSource, sourceHash, snapshot } from './source.js';
+import { studentScope } from '../academic-years/service.js';
 export async function cvRoutes(
   app: FastifyInstance,
   env: Environment,
@@ -238,14 +240,22 @@ export async function cvRoutes(
     async (request, reply) => {
       const input = cvBatchSchema.parse(request.body);
       let ids: string[];
-      if ('studentIds' in input) ids = [...new Set(input.studentIds)];
-      else {
+      if ('studentIds' in input) {
+        ids = [...new Set(input.studentIds)];
+        const where = await studentScope(app.db, listQuerySchema.parse(input.scope ?? {}));
+        const count = await app.db.student.count({ where: { ...where, id: { in: ids } } });
+        if (count !== ids.length)
+          throw new AppError(
+            409,
+            'PDF_SCOPE',
+            'بعض الطلاب خارج نطاق السنة والحالة المختارتين. حدّث القائمة والتحديد.',
+          );
+      } else {
         const q = input.filters;
+        const scope = await studentScope(app.db, listQuerySchema.parse(q));
         const rows = await app.db.student.findMany({
           where: {
-            ...(q.search ? { name: { contains: q.search, mode: 'insensitive' as const } } : {}),
-            ...(q.grade ? { grade: q.grade } : {}),
-            ...(q.talent ? { primaryTalent: q.talent } : {}),
+            ...scope,
             cv: { approvedAt: { not: null } },
           },
           select: { id: true },

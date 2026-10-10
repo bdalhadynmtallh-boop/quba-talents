@@ -1,3 +1,4 @@
+import { testCatalog } from '../../backend/tests/catalog.js';
 import { test, expect, type Page } from '@playwright/test';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -21,6 +22,7 @@ test.beforeAll(async () => {
   if (env.NODE_ENV !== 'development' || !env.DATABASE_URL)
     throw new Error('Browser suite is allowed only against local development configuration.');
   db = createDatabase(env.DATABASE_URL);
+  await testCatalog(db);
   storage = new LocalStorage(resolve('backend', env.STORAGE_DIR ?? '.data/uploads'));
   const admin = await db.admin.create({
     data: {
@@ -72,7 +74,7 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /مواهب تستحق/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /شغفك اليوم/ })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await noOverflow(page);
@@ -90,8 +92,8 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   await page.goto('/register');
   await page.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} أحمد`);
   await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
-  await page.getByLabel('الفصل', { exact: true }).fill('أ');
-  await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('البرمجة');
+  await page.getByLabel('الفصل', { exact: true }).selectOption({ label: 'أ' });
+  await page.getByLabel('الموهبة الرئيسية', { exact: true }).selectOption({ label: 'البرمجة' });
   await page.getByLabel('وصف مختصر للموهبة').fill('أحب البرمجة وتطوير المواقع التعليمية.');
   await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
   await expect(page.getByRole('heading', { name: 'وصلت موهبتك إلينا!' })).toBeVisible();
@@ -112,7 +114,7 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   await expect(card).toHaveCount(1);
   await page.getByLabel('البحث باسم الطالب').fill(`${prefix} أحمد`);
   await page.getByLabel('تصفية بالصف').selectOption('SECOND');
-  await page.getByLabel('تصفية بالموهبة').selectOption('البرمجة');
+  await page.getByLabel('تصفية بالموهبة').selectOption({ label: 'البرمجة' });
   await page.getByRole('button', { name: 'بحث', exact: true }).click();
   await expect(page.locator('.student-card')).toHaveCount(1);
   await card.getByRole('link', { name: 'عرض ملف الطالب' }).click();

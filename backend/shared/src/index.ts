@@ -1,4 +1,63 @@
 import { z } from 'zod';
+export function normalizeArabic(value: string): string {
+  return value
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+// Catalog names additionally ignore the Arabic definite article, so برمجة / البرمجه collide.
+export function catalogNameKey(value: string): string {
+  return normalizeArabic(value).replace(/(^| )ال(?=[\u0621-\u064A])/g, '$1');
+}
+export const academicYearLabelSchema = z
+  .object({ label: z.string().trim().min(2).max(40) })
+  .strict();
+export const rolloverSchema = academicYearLabelSchema
+  .extend({ yearId: z.uuid(), requestId: z.uuid() })
+  .strict();
+export const catalogSchema = z
+  .object({
+    name: z.string().trim().min(1).max(30),
+    sortOrder: z.number().int().min(0).max(10000).default(0),
+    active: z.boolean().default(true),
+  })
+  .strict();
+export const talentCatalogSchema = catalogSchema
+  .extend({ name: z.string().trim().min(2).max(80) })
+  .strict();
+export interface CatalogItem {
+  id: string;
+  name: string;
+  sortOrder: number;
+  active: boolean;
+}
+export interface CatalogView {
+  classrooms: CatalogItem[];
+  talents: CatalogItem[];
+}
+export interface AcademicYearView {
+  id: string;
+  label: string;
+  status: 'OPEN' | 'CLOSED';
+  openedAt: string;
+  closedAt: string | null;
+}
+export interface YearSettings {
+  years: AcademicYearView[];
+  current: AcademicYearView;
+  counts: { FIRST: number; SECOND: number; THIRD: number };
+}
+export interface DashboardView {
+  academicYear: AcademicYearView;
+  pendingRequests: number;
+  approvedCvs: number;
+  grades: { FIRST: number; SECOND: number; THIRD: number };
+  talents: { id: string; name: string; count: number }[];
+}
 export const loginSchema = z
   .object({
     email: z
@@ -20,23 +79,41 @@ export const achievementSchema = z
 export const supervisorSchema = z
   .object({ name: z.string().trim().min(2).max(100), role: z.string().trim().min(2).max(120) })
   .strict();
-export const studentSchema = z
+const studentFieldsSchema = z
   .object({
     name: z.string().trim().min(2).max(120),
     grade: gradeSchema,
-    classroom: z.string().trim().min(1).max(30),
-    primaryTalent: z.string().trim().min(2).max(80),
-    additionalTalents: z.array(z.string().trim().min(1).max(80)).max(10).default([]),
+    classroomId: z.uuid(),
+    primaryTalentId: z.uuid(),
+    additionalTalentIds: z
+      .array(z.uuid())
+      .max(10)
+      .default([])
+      .refine((ids) => new Set(ids).size === ids.length),
     skills: z.array(z.string().trim().min(1).max(120)).max(30).default([]),
     achievements: z.array(achievementSchema).max(30).default([]),
     notes: z.string().trim().max(5000).default(''),
     supervisorOverrides: z.array(supervisorSchema).max(10).nullable().default(null),
   })
   .strict();
-export const registrationSchema = studentSchema
-  .pick({ name: true, grade: true, classroom: true, primaryTalent: true })
+export const studentSchema = studentFieldsSchema.refine(
+  (value) => !value.additionalTalentIds.includes(value.primaryTalentId),
+  { message: 'لا تكرر الموهبة الرئيسية.', path: ['additionalTalentIds'] },
+);
+export const registrationSchema = studentFieldsSchema
+  .pick({
+    name: true,
+    grade: true,
+    classroomId: true,
+    primaryTalentId: true,
+    additionalTalentIds: true,
+  })
   .extend({ description: z.string().trim().min(10).max(1000) })
-  .strict();
+  .strict()
+  .refine((value) => !value.additionalTalentIds.includes(value.primaryTalentId), {
+    message: 'لا تكرر الموهبة الرئيسية.',
+    path: ['additionalTalentIds'],
+  });
 export const safeUrlSchema = z
   .string()
   .trim()
@@ -71,7 +148,11 @@ export const listQuerySchema = z
     pageSize: z.coerce.number().int().min(1).max(50).default(12),
     search: z.string().trim().max(120).default(''),
     grade: gradeSchema.optional(),
-    talent: z.string().trim().max(80).optional(),
+    talent: z.uuid().optional(),
+    classroomId: z.uuid().optional(),
+    academicYearId: z.uuid().optional(),
+    status: z.enum(['ACTIVE', 'ARCHIVED']).optional(),
+    approved: z.enum(['true']).optional(),
   })
   .strict();
 export const registrationQuerySchema = z
@@ -106,6 +187,8 @@ export const cvContentSchema = z
     summary: z.string().trim().max(5000),
     talents: z.array(z.string().trim().min(1).max(200)).max(20),
     skills: z.array(z.string().trim().min(1).max(200)).max(40),
+    suggestedSkills: z.array(z.string().trim().min(1).max(200)).max(3).optional(),
+    futureGoals: z.array(z.string().trim().min(1).max(300)).max(3).optional(),
     achievements: z.array(achievementSchema.extend({ date: z.iso.date().nullable() })).max(40),
     projects: z
       .array(
@@ -123,6 +206,18 @@ export const cvContentSchema = z
   })
   .strict();
 export const cvSchema = cvContentSchema.extend({ version: z.literal(2) }).strict();
+// New generation requires three suggestions; stored version 2 CVs may omit them.
+export const cvGenerationContentSchema = cvContentSchema
+  .extend({
+    suggestedSkills: z.array(z.string().trim().min(1).max(200)).length(3),
+    futureGoals: z.array(z.string().trim().min(1).max(300)).length(3),
+  })
+  .strict();
+export const cvHeaderLines = [
+  'المملكة العربية السعودية',
+  'الإدارة العامة للتعليم بمنطقة المدينة المنورة',
+  'ثانوية قباء',
+] as const;
 export const cvSnapshotSchema = z
   .object({
     name: z.string(),
@@ -130,6 +225,7 @@ export const cvSnapshotSchema = z
     classroom: z.string(),
     primaryTalent: z.string(),
     schoolName: z.string(),
+    academicYearLabel: z.string().optional(),
     supervisors: z.array(supervisorSchema),
   })
   .strict();
@@ -138,8 +234,13 @@ export const cvEditSchema = z
   .strict();
 export const cvRevisionSchema = cvEditSchema.pick({ revision: true }).strict();
 export const cvBatchSchema = z.union([
-  z.object({ studentIds: z.array(z.uuid()).min(1).max(20) }).strict(),
-  z.object({ filters: listQuerySchema.pick({ search: true, grade: true, talent: true }) }).strict(),
+  z
+    .object({
+      studentIds: z.array(z.uuid()).min(1).max(20),
+      scope: listQuerySchema.pick({ academicYearId: true, status: true }).optional(),
+    })
+    .strict(),
+  z.object({ filters: listQuerySchema.omit({ page: true, pageSize: true }) }).strict(),
 ]);
 export type LoginInput = z.infer<typeof loginSchema>;
 export type StudentInput = z.infer<typeof studentSchema>;
@@ -174,6 +275,13 @@ export interface WorkView extends Omit<WorkInput, 'date'> {
   updatedAt: string;
 }
 export interface StudentView extends StudentInput {
+  classroom: string;
+  primaryTalent: string;
+  additionalTalents: string[];
+  academicYearId: string;
+  academicYearLabel: string;
+  status: 'ACTIVE' | 'ARCHIVED';
+  archivedAt: string | null;
   id: string;
   createdAt: string;
   updatedAt: string;
@@ -181,6 +289,8 @@ export interface StudentView extends StudentInput {
   works: WorkView[];
 }
 export interface RegistrationView extends RegistrationInput {
+  classroom: string;
+  primaryTalent: string;
   id: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   studentId: string | null;
@@ -196,7 +306,7 @@ export interface PageResult<T> {
   pageSize: number;
   total: number;
   totalPages: number;
-  talents?: string[];
+  talents?: CatalogItem[];
 }
 export interface CvSource {
   student: StudentView;

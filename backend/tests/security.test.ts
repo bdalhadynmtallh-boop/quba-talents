@@ -38,8 +38,8 @@ test('Shared schemas reject extra personal data and malformed login input', () =
   const form = {
     name: 'طالب تجريبي',
     grade: 'SECOND',
-    classroom: 'أ',
-    primaryTalent: 'البرمجة',
+    classroomId: '00000000-0000-4000-8000-000000000001',
+    primaryTalentId: '00000000-0000-4000-8000-000000000002',
     description: 'وصف تجريبي للموهبة',
   };
   assert.equal(registrationSchema.safeParse(form).success, true);

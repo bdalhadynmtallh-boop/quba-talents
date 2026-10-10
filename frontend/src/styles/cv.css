@@ -56,6 +56,248 @@
 .cv-paper .editor-item:last-child {
   border-bottom: 0;
 }
+.cv-official-header {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.cv-official-header span:last-child {
+  font-weight: 600;
+  font-size: 14px;
+}
+.cv-school-brand .school-logo {
+  flex-shrink: 0;
+}
+.cv-paper .cv-section-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+[data-theme='dark'] .cv-paper section h3,
+[data-theme='dark'] .cv-supervisors h3,
+[data-theme='dark'] .completion-title strong {
+  color: #91b6ff;
+}
+.cv-editor-modal {
+  max-width: 1240px;
+}
+.cv-editor-modal > .modal-heading {
+  position: sticky;
+  top: -25px;
+  z-index: 5;
+  background: var(--surface);
+  padding-block: 10px;
+}
+.editor-preview-navigation {
+  display: none;
+}
+.cv-paper ul {
+  list-style: disc;
+}
+.cv-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 30px;
+  align-items: start;
+}
+.cv-editor-layout > form {
+  min-width: 0;
+}
+.editor-live-preview {
+  position: sticky;
+  top: 0;
+  min-width: 0;
+}
+.editor-live-preview > p {
+  font-size: 12px;
+}
+.editor-live-preview .cv-paper {
+  margin-top: 16px;
+  padding: 24px;
+}
+.editor-live-preview .cv-paper header h2 {
+  font-size: 20px;
+}
+.editor-live-preview .cv-official-header {
+  font-size: 11px;
+}
+.editor-save-state {
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+.editor-save-state.is-dirty {
+  border-color: #b5882b;
+  background: #fff2cf;
+  color: #634514;
+}
+[data-theme='dark'] .editor-save-state.is-dirty {
+  background: #3b301b;
+  color: #ffe0a0;
+}
+.suggestion-editor {
+  margin-block: 26px;
+  padding: 17px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.suggestion-editor > p {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.suggestion-editor h3 {
+  font-size: 15px;
+}
+.suggestion-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.suggestion-row .button {
+  min-height: 40px;
+  font-size: 12px;
+  padding: 7px 12px;
+}
+.profile-completion {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px 25px;
+  border-radius: 14px;
+  margin-top: 16px;
+}
+.completion-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.completion-title h2 {
+  font-size: 16px;
+}
+.completion-title strong {
+  margin-inline-start: auto;
+  font-size: 18px;
+  color: var(--primary);
+}
+.profile-completion progress {
+  width: 100%;
+  height: 9px;
+  accent-color: var(--primary);
+  margin-block: 15px 10px;
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.profile-completion progress::-webkit-progress-bar {
+  background: var(--surface-soft);
+}
+.profile-completion progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #7547ce, #2868e7);
+}
+.profile-completion > p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.profile-completion details {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.profile-completion summary {
+  cursor: pointer;
+}
+.profile-completion ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.profile-completion li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 7px;
+}
+.profile-completion li small {
+  margin-inline-start: auto;
+  color: var(--muted);
+}
+.profile-completion .complete > svg {
+  color: #229775;
+}
+@media (max-width: 1000px) {
+  .editor-preview-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .editor-preview-navigation .button {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .editor-live-preview,
+  .cv-editor-layout > form {
+    scroll-margin-top: 65px;
+  }
+  .cv-editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-live-preview {
+    position: static;
+  }
+  .cv-editor-modal {
+    max-width: 700px;
+  }
+}
+@media (max-width: 480px) {
+  .cv-editor-modal > .modal-heading {
+    top: -20px;
+  }
+  .cv-official-header {
+    font-size: 10px;
+  }
+  .cv-official-header span:last-child {
+    font-size: 12px;
+  }
+  .cv-school {
+    gap: 6px;
+  }
+  .cv-school-brand {
+    gap: 6px;
+  }
+  .cv-school .ministry-mark {
+    width: 74px;
+    height: 61px;
+  }
+  .cv-school .ministry-mark img {
+    width: 175px;
+    height: 175px;
+    top: -59px;
+    left: -51px;
+  }
+  .editor-live-preview .cv-paper {
+    padding: 16px 12px;
+  }
+  .editor-live-preview .cv-official-header {
+    font-size: 9px;
+  }
+  .cv-school-brand .school-logo {
+    width: 24px;
+    height: 24px;
+  }
+  .profile-completion {
+    padding: 17px;
+  }
+  .completion-title h2 {
+    font-size: 14px;
+  }
+}
 @media (max-width: 780px) {
   .cv-actions .management-actions {
     width: 100%;

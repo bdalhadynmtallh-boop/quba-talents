@@ -11,6 +11,9 @@ import { registrationRoutes } from './modules/registrations/routes.js';
 import { workRoutes } from './modules/works/routes.js';
 import { schoolRoutes } from './modules/school/routes.js';
 import { cvRoutes } from './modules/cv/routes.js';
+import { academicYearRoutes } from './modules/academic-years/routes.js';
+import { catalogRoutes } from './modules/school/catalog-routes.js';
+import { dashboardRoutes } from './modules/dashboard/routes.js';
 import { QwenTextAi, type TextAi } from './services/ai/qwen.js';
 import { ChromiumPdf, type PdfRenderer } from './services/pdf/chromium.js';
 export async function buildApp(
@@ -55,6 +58,9 @@ export async function buildApp(
       await registrationRoutes(api);
       await workRoutes(api);
       await schoolRoutes(api);
+      await academicYearRoutes(api);
+      await catalogRoutes(api);
+      await dashboardRoutes(api);
       await cvRoutes(api, env, {
         ai: testServices?.ai ?? new QwenTextAi(env),
         pdf: testServices?.pdf ?? new ChromiumPdf(env),

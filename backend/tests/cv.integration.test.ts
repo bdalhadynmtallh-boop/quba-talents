@@ -1,3 +1,4 @@
+import { testCatalog } from './catalog.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -23,6 +24,7 @@ test(
       storageRoot = resolve('.data', prefix);
     const db = createDatabase(url),
       password = randomBytes(20).toString('hex');
+    const catalog = await testCatalog(db);
     const admin = await db.admin.create({
       data: {
         email: `${prefix}@example.test`,
@@ -74,8 +76,8 @@ test(
     const input = {
       name: `${prefix} أحمد`,
       grade: 'SECOND',
-      classroom: 'أ',
-      primaryTalent: 'البرمجة',
+      classroomId: catalog.classroom.id,
+      primaryTalentId: catalog.programming.id,
       skills: ['تطوير المواقع'],
       notes: 'نفّذ موقعًا تعليميًا.',
       achievements: [{ title: 'المشاركة في معرض المدرسة', date: '2026-03-01' }],
@@ -102,8 +104,8 @@ test(
             await guest.post('/api/registrations', {
               name: input.name,
               grade: input.grade,
-              classroom: input.classroom,
-              primaryTalent: input.primaryTalent,
+              classroomId: input.classroomId,
+              primaryTalentId: input.primaryTalentId,
               description: input.notes,
             })
           ).statusCode,
@@ -235,13 +237,16 @@ test(
         const root = resolve('docs/pdf');
         await mkdir(root, { recursive: true });
         await writeFile(resolve(root, 'single-short.pdf'), pdf.rawPayload);
-        assert.equal((await PDFDocument.load(pdf.rawPayload)).getPageCount(), 1);
+        // The new development sections add a second page to this fixture.
+        assert.equal((await PDFDocument.load(pdf.rawPayload)).getPageCount(), 2);
         const second = (
           await client.post('/api/students', { ...input, name: `${prefix} عمر` })
         ).json<StudentView>();
         const source = (await get()).approved!;
         const long = cvSchema.parse({
           ...source,
+          suggestedSkills: undefined,
+          futureGoals: undefined,
           summary: 'طالب موهوب مهتم بالمشاريع التعليمية.',
           projects: Array.from({ length: 25 }, (_, i) => ({
             title: `المشروع التعليمي ${i + 1}`,

@@ -1,3 +1,4 @@
+import { testCatalog } from './catalog.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -38,6 +39,7 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
   const db = createDatabase(url),
     prefix = `test-${randomUUID()}`,
     password = randomBytes(24).toString('hex');
+  const catalog = await testCatalog(db);
   const admin = await db.admin.create({
     data: {
       email: `${prefix}@example.test`,
@@ -53,7 +55,11 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
     await db.registrationRequest.deleteMany({ where: { name: { startsWith: prefix } } });
     await db.student.deleteMany({ where: { name: { startsWith: prefix } } });
     await db.admin.deleteMany({ where: { id: admin.id } });
-    await db.schoolSettings.deleteMany({ where: { id: 'school' } });
+    await db.supervisor.deleteMany({ where: { schoolId: 'school' } });
+    await db.schoolSettings.update({
+      where: { id: 'school' },
+      data: { logoKey: null, logoName: null, logoMimeType: null },
+    });
     await db.storageDeletion.deleteMany({});
     await db.$disconnect();
     const allowed = resolve('.data') + sep;
@@ -65,9 +71,9 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
   const input = {
     name: `${prefix} أحمد`,
     grade: 'SECOND',
-    classroom: 'أ',
-    primaryTalent: 'البرمجة',
-    additionalTalents: ['الروبوتات'],
+    classroomId: catalog.classroom.id,
+    primaryTalentId: catalog.programming.id,
+    additionalTalentIds: [catalog.robotics.id],
     skills: ['حل المشكلات'],
     achievements: [{ title: 'معرض المدرسة', date: '2026-01-20' }],
     notes: 'معلومات حقيقية للاختبار',
@@ -104,8 +110,8 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
       const response = await guest.post('/api/registrations', {
         name: input.name,
         grade: input.grade,
-        classroom: input.classroom,
-        primaryTalent: input.primaryTalent,
+        classroomId: input.classroomId,
+        primaryTalentId: input.primaryTalentId,
         description: 'اهتمام بالبرمجة والمشاريع التعليمية',
       });
       assert.equal(response.statusCode, 201, response.body);
@@ -144,8 +150,8 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
       const rejected = await guest.post('/api/registrations', {
         name: `${prefix} مرفوض`,
         grade: 'FIRST',
-        classroom: 'ب',
-        primaryTalent: 'الرسم',
+        classroomId: catalog.secondClassroom.id,
+        primaryTalentId: catalog.drawing.id,
         description: 'اهتمام بالرسم والتصميم الفني',
       });
       assert.equal(rejected.statusCode, 201);
@@ -167,7 +173,7 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
         ...input,
         name: `${prefix} عمر`,
         grade: 'THIRD',
-        primaryTalent: 'الرسم',
+        primaryTalentId: catalog.drawing.id,
         achievements: [],
         notes: '',
       });
@@ -177,11 +183,11 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
         ...input,
         name: `${prefix} عمر معدل`,
         grade: 'THIRD',
-        primaryTalent: 'الرسم',
+        primaryTalentId: catalog.drawing.id,
       });
       assert.equal(updated.statusCode, 200, updated.body);
       const result = await client.request({
-        url: `/api/students?search=${encodeURIComponent(prefix)}&grade=SECOND&talent=${encodeURIComponent('البرمجة')}&pageSize=1`,
+        url: `/api/students?search=${encodeURIComponent(prefix)}&grade=SECOND&talent=${encodeURIComponent(catalog.programming.id)}&pageSize=1`,
       });
       const data = result.json<PageResult<StudentView>>();
       assert.equal(result.statusCode, 200);
@@ -506,14 +512,15 @@ test('Public registration flood limit', { skip: !url }, async (t) => {
     if (!env.STORAGE_DIR.startsWith(allowed)) throw new Error('Unsafe cleanup');
     await rm(env.STORAGE_DIR, { recursive: true, force: true });
   });
+  const catalog = await testCatalog(app.db);
   for (let i = 0; i < 5; i++)
     assert.equal(
       (
         await client.post('/api/registrations', {
           name: prefix,
           grade: 'FIRST',
-          classroom: 'أ',
-          primaryTalent: 'البرمجة',
+          classroomId: catalog.classroom.id,
+          primaryTalentId: catalog.programming.id,
           description: 'اهتمام بالبرمجة والمشاريع',
         })
       ).statusCode,
@@ -524,8 +531,8 @@ test('Public registration flood limit', { skip: !url }, async (t) => {
       await client.post('/api/registrations', {
         name: prefix,
         grade: 'FIRST',
-        classroom: 'أ',
-        primaryTalent: 'البرمجة',
+        classroomId: catalog.classroom.id,
+        primaryTalentId: catalog.programming.id,
         description: 'اهتمام بالبرمجة والمشاريع',
       })
     ).statusCode,

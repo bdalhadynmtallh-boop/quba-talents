@@ -6,15 +6,7 @@ import { schoolView } from '../students/serialization.js';
 export async function ensureSchool(app: FastifyInstance) {
   return app.db.schoolSettings.upsert({
     where: { id: 'school' },
-    create: {
-      id: 'school',
-      supervisors: {
-        create: [
-          { name: 'مشرف تجريبي أول', role: 'منسق الموهوبين', sortOrder: 0 },
-          { name: 'مشرف تجريبي ثانٍ', role: 'مشرف المشاريع', sortOrder: 1 },
-        ],
-      },
-    },
+    create: { id: 'school' },
     update: {},
     include: { supervisors: { orderBy: { sortOrder: 'asc' } } },
   });

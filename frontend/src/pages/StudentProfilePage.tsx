@@ -4,6 +4,7 @@ import { ArrowRight, Pencil, Trash2 } from 'lucide-react';
 import { gradeLabels, type StudentView } from '@quba/shared';
 import { RequireAdmin } from '../features/auth/RequireAdmin';
 import { StudentForm } from '../features/students/StudentForm';
+import { ProfileCompletion } from '../features/students/ProfileCompletion';
 import { CvPreview } from '../features/cv/CvPreview';
 import { WorksPanel } from '../features/works/WorksPanel';
 import { Modal } from '../components/ui/Modal';
@@ -16,7 +17,8 @@ function ProfileContent({ id }: { id: string }) {
     navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState(false),
-    [deleting, setDeleting] = useState(false);
+    [deleting, setDeleting] = useState(false),
+    [restoring, setRestoring] = useState(false);
   const active = params.get('tab') === 'works' ? 'works' : 'cv';
   if (resource.loading || resource.error)
     return <ResourceState {...resource} onRetry={resource.reload} />;
@@ -33,9 +35,17 @@ function ProfileContent({ id }: { id: string }) {
               {gradeLabels[student.grade]} · الفصل {student.classroom}
             </p>
             <span className="talent-tag blue">{student.primaryTalent}</span>
+            <p>
+              {student.academicYearLabel} · {student.status === 'ARCHIVED' ? 'مؤرشف' : 'نشط'}
+            </p>
           </div>
         </div>
         <div className="management-actions">
+          {student.status === 'ARCHIVED' && (
+            <button className="button" onClick={() => setRestoring(true)}>
+              استعادة للسنة المفتوحة
+            </button>
+          )}
           <button className="button button-secondary" onClick={() => setEditing(true)}>
             <Pencil size={17} />
             تعديل الطالب
@@ -45,6 +55,7 @@ function ProfileContent({ id }: { id: string }) {
           </button>
         </div>
       </section>
+      <ProfileCompletion student={student} />
       <div className="profile-tabs">
         <nav aria-label="تبويبات ملف الطالب">
           <button
@@ -89,6 +100,17 @@ function ProfileContent({ id }: { id: string }) {
           onConfirm={async () => {
             await api(`/students/${id}`, { method: 'DELETE' });
             navigate('/students');
+          }}
+        />
+      )}
+      {restoring && (
+        <ConfirmDialog
+          title="استعادة طالب مؤرشف"
+          message={`سيعود ${student.name} نشطًا في الصف الثالث بالسنة المفتوحة الحالية. هل تريد الاستعادة؟`}
+          onClose={() => setRestoring(false)}
+          onConfirm={async () => {
+            await api(`/students/${id}/restore`, { method: 'POST' });
+            resource.reload();
           }}
         />
       )}

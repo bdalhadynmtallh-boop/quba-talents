@@ -10,6 +10,12 @@ export class FakeTextAi implements TextAi {
       summary: `يهتم الطالب بموهبة ${input.primaryTalent}. ${input.notes}`,
       talents: [input.primaryTalent, ...input.additionalTalents],
       skills: input.skills,
+      suggestedSkills: ['فهم المتغيرات', 'استخدام الشروط والحلقات', 'كتابة دوال بسيطة'],
+      futureGoals: [
+        'كتابة برنامج لحساب المعدل',
+        'إنشاء صفحة HTML وCSS',
+        'حل ثلاثة تمارين للمبتدئين',
+      ],
       achievements: input.achievements.map((a) => ({ ...a, date: a.date ?? null })),
       projects: input.projects,
       missingInformation: input.achievements.length ? [] : ['أضف إنجازات موثقة إن توفرت.'],

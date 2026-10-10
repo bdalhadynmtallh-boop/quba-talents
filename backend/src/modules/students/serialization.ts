@@ -1,4 +1,10 @@
-import { cvSchema, studentSchema, schoolSchema, type StudentInput } from '@quba/shared';
+import {
+  cvSchema,
+  studentSchema,
+  schoolSchema,
+  normalizeArabic,
+  type StudentInput,
+} from '@quba/shared';
 import {
   Prisma,
   type Student,
@@ -7,10 +13,19 @@ import {
   type Attachment,
   type Supervisor,
   type SchoolSettings,
+  type Classroom,
+  type Talent,
+  type AcademicYear,
+  type StudentTalent,
 } from '../../generated/prisma/client.js';
 export function studentData(input: StudentInput) {
+  const { additionalTalentIds, ...fields } = input;
   return {
-    ...input,
+    ...fields,
+    nameSearch: normalizeArabic(input.name),
+    additionalTalents: {
+      create: additionalTalentIds.map((talentId, sortOrder) => ({ talentId, sortOrder })),
+    },
     achievements: input.achievements.map((item) => ({
       title: item.title,
       date: item.date ?? null,
@@ -39,14 +54,21 @@ export function workView(work: Work & { attachments: Attachment[] }) {
   };
 }
 export function studentView(
-  student: Student & { cv?: StudentCv | null; works?: Array<Work & { attachments: Attachment[] }> },
+  student: Student & {
+    classroom: Classroom;
+    primaryTalent: Talent;
+    academicYear: AcademicYear;
+    additionalTalents: Array<StudentTalent & { talent: Talent }>;
+    cv?: StudentCv | null;
+    works?: Array<Work & { attachments: Attachment[] }>;
+  },
 ) {
   const input = studentSchema.parse({
     name: student.name,
     grade: student.grade,
-    classroom: student.classroom,
-    primaryTalent: student.primaryTalent,
-    additionalTalents: student.additionalTalents,
+    classroomId: student.classroomId,
+    primaryTalentId: student.primaryTalentId,
+    additionalTalentIds: student.additionalTalents.map((item) => item.talentId),
     skills: student.skills,
     achievements: student.achievements,
     notes: student.notes,
@@ -56,6 +78,13 @@ export function studentView(
     approved = cvSchema.safeParse(student.cv?.approved);
   return {
     ...input,
+    classroom: student.classroom.name,
+    primaryTalent: student.primaryTalent.name,
+    additionalTalents: student.additionalTalents.map((item) => item.talent.name),
+    academicYearId: student.academicYearId,
+    academicYearLabel: student.academicYear.label,
+    status: student.status,
+    archivedAt: student.archivedAt?.toISOString() ?? null,
     id: student.id,
     createdAt: student.createdAt.toISOString(),
     updatedAt: student.updatedAt.toISOString(),

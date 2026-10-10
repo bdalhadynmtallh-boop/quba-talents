@@ -15,6 +15,14 @@ enum RegistrationStatus {
   APPROVED
   REJECTED
 }
+enum AcademicYearStatus {
+  OPEN
+  CLOSED
+}
+enum StudentStatus {
+  ACTIVE
+  ARCHIVED
+}
 model Admin {
   id String @id @default(uuid()) @db.Uuid
   email String @unique @db.VarChar(254)
@@ -40,9 +48,16 @@ model Student {
   id String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(120)
   grade Grade
-  classroom String @db.VarChar(30)
-  primaryTalent String @db.VarChar(80)
-  additionalTalents String[] @default([])
+  nameSearch String
+  classroomId String @db.Uuid
+  classroom Classroom @relation(fields:[classroomId], references:[id], onDelete:Restrict)
+  primaryTalentId String @db.Uuid
+  primaryTalent Talent @relation(fields:[primaryTalentId], references:[id], onDelete:Restrict)
+  additionalTalents StudentTalent[]
+  academicYearId String @db.Uuid
+  academicYear AcademicYear @relation(fields:[academicYearId], references:[id], onDelete:Restrict)
+  status StudentStatus @default(ACTIVE)
+  archivedAt DateTime?
   skills String[] @default([])
   achievements Json @default("[]")
   supervisorOverrides Json?
@@ -53,15 +68,21 @@ model Student {
   registration RegistrationRequest?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@index([grade, primaryTalent])
-  @@index([name])
+  @@index([academicYearId, status, grade])
+  @@index([primaryTalentId])
+  @@index([classroomId])
+  @@index([nameSearch])
 }
 model RegistrationRequest {
   id String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(120)
   grade Grade
-  classroom String @db.VarChar(30)
-  primaryTalent String @db.VarChar(80)
+  nameSearch String
+  classroomId String @db.Uuid
+  classroom Classroom @relation(fields:[classroomId], references:[id], onDelete:Restrict)
+  primaryTalentId String @db.Uuid
+  primaryTalent Talent @relation(fields:[primaryTalentId], references:[id], onDelete:Restrict)
+  additionalTalents RegistrationTalent[]
   description String @db.VarChar(1000)
   status RegistrationStatus @default(PENDING)
   reviewedAt DateTime?
@@ -72,6 +93,9 @@ model RegistrationRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([status, createdAt])
+  @@index([nameSearch])
+  @@index([classroomId])
+  @@index([primaryTalentId])
 }
 model StudentCv {
   id String @id @default(uuid()) @db.Uuid
@@ -126,6 +150,8 @@ model SchoolSettings {
   logoName String?
   logoMimeType String?
   supervisors Supervisor[]
+  classrooms Classroom[]
+  talents Talent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -145,4 +171,60 @@ model StorageDeletion {
   storageKey String @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model AcademicYear {
+  id String @id @default(uuid()) @db.Uuid
+  label String @db.VarChar(40)
+  status AcademicYearStatus @default(OPEN)
+  openedAt DateTime @default(now())
+  closedAt DateTime?
+  rolloverRequestId String? @unique @db.Uuid
+  rolloverResult Json?
+  students Student[]
+}
+model Classroom {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @default("school")
+  school SchoolSettings @relation(fields:[schoolId], references:[id], onDelete:Restrict)
+  name String @db.VarChar(30)
+  nameKey String
+  sortOrder Int @default(0)
+  active Boolean @default(true)
+  students Student[]
+  requests RegistrationRequest[]
+  @@unique([schoolId, nameKey])
+  @@index([schoolId, active, sortOrder])
+}
+model Talent {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @default("school")
+  school SchoolSettings @relation(fields:[schoolId], references:[id], onDelete:Restrict)
+  name String @db.VarChar(80)
+  nameKey String
+  sortOrder Int @default(0)
+  active Boolean @default(true)
+  students Student[]
+  requests RegistrationRequest[]
+  additionalStudents StudentTalent[]
+  additionalRequests RegistrationTalent[]
+  @@unique([schoolId, nameKey])
+  @@index([schoolId, active, sortOrder])
+}
+model StudentTalent {
+  sortOrder Int @default(0)
+  studentId String @db.Uuid
+  talentId String @db.Uuid
+  student Student @relation(fields:[studentId], references:[id], onDelete:Cascade)
+  talent Talent @relation(fields:[talentId], references:[id], onDelete:Restrict)
+  @@id([studentId, talentId])
+  @@index([talentId])
+}
+model RegistrationTalent {
+  sortOrder Int @default(0)
+  registrationId String @db.Uuid
+  talentId String @db.Uuid
+  registration RegistrationRequest @relation(fields:[registrationId], references:[id], onDelete:Cascade)
+  talent Talent @relation(fields:[talentId], references:[id], onDelete:Restrict)
+  @@id([registrationId, talentId])
+  @@index([talentId])
 }

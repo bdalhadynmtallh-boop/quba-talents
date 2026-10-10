@@ -1,119 +1,13 @@
 import { useState, useRef } from 'react';
 import { FileText, Sparkles, Download, Pencil, Check } from 'lucide-react';
-import {
-  gradeLabels,
-  type CvSource,
-  type CvState,
-  type CvData,
-  type cvSnapshotSchema,
-} from '@quba/shared';
-import type { z } from 'zod';
+import { type CvSource, type CvState } from '@quba/shared';
 import { useResource } from '../../lib/useResource';
 import { api, downloadPdf, errorMessage } from '../../lib/api';
 import { ResourceState } from '../../components/ui/ResourceState';
 import { StatusPanel } from '../../components/ui/StatusPanel';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { CvEditor } from './CvEditor';
-import ministryLogo from '../../assets/ministry-education.png';
-function CvPaper({
-  content,
-  identity,
-  source,
-}: {
-  content: CvData;
-  identity: z.infer<typeof cvSnapshotSchema>;
-  source: CvSource;
-}) {
-  return (
-    <article className="cv-paper">
-      <div className="cv-school">
-        <div className="cv-school-brand">
-          {source.school.hasLogo && (
-            <img
-              className="school-logo"
-              src={`/api/school/logo?v=${encodeURIComponent(source.school.updatedAt)}`}
-              alt="شعار المدرسة"
-            />
-          )}
-          {identity.schoolName}
-        </div>
-        <div className="ministry-mark">
-          <img src={ministryLogo} alt="شعار وزارة التعليم" />
-        </div>
-      </div>
-      <header>
-        <h2>السيرة الذاتية — ملف الموهبة والإنجاز</h2>
-        <h3>{identity.name}</h3>
-        <p>
-          {gradeLabels[identity.grade]} · الفصل {identity.classroom}
-        </p>
-        <p>الموهبة الرئيسية: {identity.primaryTalent}</p>
-      </header>
-      {content.summary && (
-        <section>
-          <h3>نبذة عن الطالب</h3>
-          <p className="pre-wrap">{content.summary}</p>
-        </section>
-      )}
-      {content.talents.length > 0 && (
-        <section>
-          <h3>المواهب والاهتمامات</h3>
-          <div className="skills">
-            {content.talents.map((s, i) => (
-              <span key={i}>{s}</span>
-            ))}
-          </div>
-        </section>
-      )}
-      {content.skills.length > 0 && (
-        <section>
-          <h3>المهارات</h3>
-          <div className="skills">
-            {content.skills.map((s, i) => (
-              <span key={i}>{s}</span>
-            ))}
-          </div>
-        </section>
-      )}
-      {content.achievements.length > 0 && (
-        <section>
-          <h3>الإنجازات والمشاركات</h3>
-          <ul>
-            {content.achievements.map((a, i) => (
-              <li key={i}>
-                {a.title}
-                {a.date && ` · ${a.date}`}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {content.projects.length > 0 && (
-        <section>
-          <h3>الأعمال والمشاريع</h3>
-          {content.projects.map((p, i) => (
-            <div key={i} className="editor-item">
-              <h4>{p.title}</h4>
-              <p className="pre-wrap">{p.description}</p>
-              {p.studentRole && <p>دور الطالب: {p.studentRole}</p>}
-              {p.date && <small>{p.date}</small>}
-            </div>
-          ))}
-        </section>
-      )}
-      {identity.supervisors.length > 0 && (
-        <footer className="cv-supervisors">
-          <h3>المشرفون</h3>
-          {identity.supervisors.map((s, i) => (
-            <p key={i}>
-              <strong>{s.name}</strong> · {s.role}
-            </p>
-          ))}
-        </footer>
-      )}
-    </article>
-  );
-}
+import { CvPaper } from './CvPaper';
 export function CvPreview({ studentId }: { studentId: string }) {
   const source = useResource<CvSource>(`/students/${studentId}/cv/source`),
     resource = useResource<CvState>(`/students/${studentId}/cv`);
@@ -289,12 +183,14 @@ export function CvPreview({ studentId }: { studentId: string }) {
         <CvEditor
           studentId={studentId}
           initial={content}
+          source={source.data}
           revision={state.revision}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);
             setView('draft');
             resource.reload();
+            source.reload();
           }}
         />
       )}

@@ -696,6 +696,7 @@ main {
 }
 .page-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   margin-bottom: 26px;
 }
@@ -1749,5 +1750,68 @@ fieldset {
   }
   .nav-shell {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+/* Academic-year settings and private dashboard reuse the existing card palette. */
+.settings-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.catalog-settings-row {
+  padding: 0.75rem 0;
+}
+.catalog-settings-row fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  align-items: end;
+  gap: 0.75rem;
+}
+.catalog-settings-row .field {
+  margin: 0;
+}
+.catalog-choices {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.dashboard {
+  margin-bottom: 1.5rem;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+.dashboard-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: right;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.dashboard-card strong {
+  font-size: 1.7rem;
+  color: var(--primary);
+}
+.dashboard-card:hover {
+  border-color: var(--primary);
+}
+html[data-theme='dark'] .dashboard-card strong {
+  color: #91b6ff;
+}
+@media (max-width: 420px) {
+  .catalog-settings-row fieldset {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

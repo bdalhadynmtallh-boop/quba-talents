@@ -1,0 +1,29 @@
+{
+  "name": "@quba/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@quba/shared": "*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.18.4",
+    "lucide-react": "^0.468.0",
+    "@fontsource/ibm-plex-sans-arabic": "^5.2.0",
+    "@fontsource/noto-kufi-arabic": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^8.3.4",
+    "tailwindcss": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.1"
+  }
+}

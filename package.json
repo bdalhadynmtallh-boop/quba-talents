@@ -1,0 +1,42 @@
+{
+  "name": "quba-talents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "backend/shared"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "dev": "npm run build -w @quba/shared && concurrently -k -n API,WEB \"npm run dev -w @quba/api\" \"npm run dev -w @quba/web\"",
+    "build": "npm run build -w @quba/shared && npm run build -w @quba/api && npm run build -w @quba/web",
+    "typecheck": "npm run build -w @quba/shared && npm run typecheck --workspaces --if-present && tsc -p tsconfig.tools.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "npm run db:generate -w @quba/api",
+    "db:migrate": "npm run db:migrate -w @quba/api",
+    "db:deploy": "npm run db:deploy -w @quba/api",
+    "db:seed": "npm run db:seed -w @quba/api",
+    "admin:setup": "npm run build -w @quba/shared && npm run admin:setup -w @quba/api",
+    "test": "npm run build -w @quba/shared && npm run test -w @quba/api",
+    "env:setup": "node backend/scripts/setup-env.mjs",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@playwright/test": "^1.58.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.48.0"
+  }
+}

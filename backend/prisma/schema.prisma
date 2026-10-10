@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Grade {
+  FIRST
+  SECOND
+  THIRD
+}
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+model Admin {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  name String @db.VarChar(100)
+  passwordHash String
+  sessions Session[]
+  reviewedRequests RegistrationRequest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Session {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique @db.Char(64)
+  adminId String @db.Uuid
+  admin Admin @relation(fields:[adminId], references:[id], onDelete:Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([adminId])
+  @@index([expiresAt])
+}
+model Student {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  grade Grade
+  classroom String @db.VarChar(30)
+  primaryTalent String @db.VarChar(80)
+  additionalTalents String[] @default([])
+  skills String[] @default([])
+  achievements Json @default("[]")
+  supervisorOverrides Json?
+  notes String @default("")
+  isPublic Boolean @default(false)
+  cv StudentCv?
+  works Work[]
+  registration RegistrationRequest?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([grade, primaryTalent])
+  @@index([name])
+}
+model RegistrationRequest {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  grade Grade
+  classroom String @db.VarChar(30)
+  primaryTalent String @db.VarChar(80)
+  description String @db.VarChar(1000)
+  status RegistrationStatus @default(PENDING)
+  reviewedAt DateTime?
+  reviewedById String? @db.Uuid
+  reviewedBy Admin? @relation(fields:[reviewedById], references:[id], onDelete:SetNull)
+  studentId String? @unique @db.Uuid
+  student Student? @relation(fields:[studentId], references:[id], onDelete:SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt])
+}
+model StudentCv {
+  id String @id @default(uuid()) @db.Uuid
+  studentId String @unique @db.Uuid
+  student Student @relation(fields:[studentId], references:[id], onDelete:Cascade)
+  content String @default("")
+  draft Json?
+  approved Json?
+  draftUpdatedAt DateTime?
+  approvedAt DateTime?
+  generatedAt DateTime?
+  revision Int @default(0)
+  draftSnapshot Json?
+  approvedSnapshot Json?
+  draftSourceHash String?
+  approvedSourceHash String?
+  generationToken String? @db.Uuid
+  generationExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Work {
+  id String @id @default(uuid()) @db.Uuid
+  studentId String @db.Uuid
+  student Student @relation(fields:[studentId], references:[id], onDelete:Cascade)
+  title String @db.VarChar(150)
+  description String @default("")
+  date DateTime?
+  url String? @db.VarChar(2048)
+  studentRole String @default("")
+  attachments Attachment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([studentId, createdAt])
+}
+model Attachment {
+  id String @id @default(uuid()) @db.Uuid
+  workId String @db.Uuid
+  work Work @relation(fields:[workId], references:[id], onDelete:Cascade)
+  storageKey String @unique
+  originalName String @db.VarChar(255)
+  mimeType String @db.VarChar(100)
+  sizeBytes Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([workId])
+}
+model SchoolSettings {
+  id String @id @default("school")
+  name String @default("موهوبين ثانوية قباء")
+  logoKey String? @unique
+  logoName String?
+  logoMimeType String?
+  supervisors Supervisor[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Supervisor {
+  id String @id @default(uuid()) @db.Uuid
+  schoolId String @default("school")
+  school SchoolSettings @relation(fields:[schoolId], references:[id], onDelete:Cascade)
+  name String @db.VarChar(100)
+  role String @db.VarChar(120)
+  sortOrder Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([schoolId, sortOrder])
+}
+model StorageDeletion {
+  id String @id @default(uuid()) @db.Uuid
+  storageKey String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

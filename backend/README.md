@@ -1,0 +1,100 @@
+# الخادم Backend
+
+Fastify 5 وPostgreSQL 17 وPrisma 7.10 مع pg adapter وZod. كل بيانات الطلاب والأعمال والسير والإعدادات في PostgreSQL، والمرفقات في تخزين خاص. localStorage في الواجهة لا يحفظ إلا الثيم.
+
+```text
+backend/
+  src/modules/          auth/students/registrations/works/school/cv
+  src/plugins/          الجلسات والحماية والقاعدة والتخزين
+  src/services/ai/      Qwen عبر HTTP مباشر
+  src/services/pdf/     HTML للطباعة وChromium وخرائط Unicode
+  src/services/storage/ التحقق والتخزين والحذف القابل لإعادة المحاولة
+  src/config/           تحقق البيئة
+  prisma/               المخطط والترحيلات الأربعة وseed اختياري
+  shared/               أنواع ومخططات Zod المشتركة مع الواجهة
+  scripts/              إنشاء أسرار البيئة
+  assets/branding/      شعار الوزارة المحلي للخادم ومصدره
+  tests/                اختبارات الحماية وAI وقاعدة البيانات
+  docs/                 الخطة والتقدم ولقطات وأمثلة PDF
+  .env                  إعدادات خاصة لا تُشحن في ZIP
+  .data/uploads/        مرفقات خاصة لا تُشحن في ZIP
+```
+
+## الإعدادات
+
+| الملف               | المتغير                                                         | الوظيفة                                                                            |
+| ------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| .env في جذر المشروع | POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_PORT | قاعدة Docker فقط                                                                   |
+| backend/.env        | DATABASE_URL                                                    | اتصال PostgreSQL؛ لا تستبدله لقاعدة موجودة                                         |
+| backend/.env        | COOKIE_SECRET                                                   | سر عشوائي بطول 32 حرفًا على الأقل                                                  |
+| backend/.env        | NODE_ENV / HOST / PORT                                          | development محليًا، production عند النشر؛ API افتراضيًا 127.0.0.1:3001             |
+| backend/.env        | APP_ORIGIN / SESSION_HOURS                                      | http://localhost:5186 محليًا، جلسة 8 ساعات افتراضيًا                               |
+| backend/.env        | STORAGE_DIR                                                     | افتراضيًا .data/uploads نسبة لمجلد backend؛ استخدم مسارًا مطلقًا دائمًا في الإنتاج |
+| backend/.env        | AI_API_KEY / AI_BASE_URL / AI_MODEL                             | إعدادات نموذج النص على الخادم فقط                                                  |
+| backend/.env        | AI_TIMEOUT_MS / AI_OUTPUT_MODE                                  | 60000 افتراضيًا؛ auto/json_object/json_schema/prompt                               |
+| backend/.env        | CHROMIUM_EXECUTABLE_PATH                                        | اختياري؛ وإلا يستخدم Chromium المثبت عبر Playwright                                |
+| الطرفية             | TEST_DATABASE_URL                                               | قاعدة منفصلة ينتهي اسمها بـ_test                                                   |
+| الطرفية             | BROWSER_ORIGIN / BROWSER_CHANNEL / BROWSER_TESTS_ALLOW_DB_WRITE | أصل المتصفح وقناته وإجازة سجلات الاختبار المؤقتة                                   |
+| الطرفية             | WEB_PORT / API_PROXY_TARGET                                     | منفذ Vite ووجهة API؛ الأخيرة للاختبار المعزول                                      |
+
+يلزم تطابق APP_ORIGIN وأصل المتصفح وWEB_PORT؛ إذا غيرت منفذ الواجهة حدثهما معًا. env:setup في جذر المشروع ينشئ ملفيه فقط عندما لا يكونان موجودين. لا تضع الأسرار داخل React أو متغيرات VITE أو Git.
+
+## Qwen
+
+الواجهة تستدعي API الخاصة بالمشروع، ومنها خدمات النص. لدى Alibaba الرسمي الافتراضي qwen3.8-max؛ AI_BASE_URL يؤخذ من لوحة المنطقة/مساحة العمل ويشمل compatible-mode/v1. تم التحقق من [التفكير](https://www.alibabacloud.com/help/en/model-studio/deep-thinking) و[الإخراج المنظم](https://docs.modelstudio.console.alibabacloud.com/en/model-studio/qwen-structured-output) و[عناوين المزود](https://help.aliyun.com/en/model-studio/base-url). يرسل الخادم enable_thinking:false للنموذج الرسمي qwen3.8-max/flash فقط. auto يختار JSON schema للنماذج المدعومة في Beijing وJSON object للمناطق الرسمية الأخرى، وتعليمات JSON فقط للمزود الآخر. لا توجد محاولة أو صيغة بديلة تلقائيًا.
+
+إعداد Xkiro في README الرئيسي. يدعم معلمة JSON، لكن [توثيقه](https://docs.xkiro.com/guides/structured-output/) يوضح أنها تطبق على Qwen كتعليمات؛ لا ندعي ضمان المخطط من المزود. تتحقق الخدمة من JSON وZod وحدود النص والتواريخ الموثقة، ولا تحفظ استجابة مبتورة أو فاشلة.
+
+المعلومات المرسلة: المواهب والمهارات والإنجازات والملاحظات ونص الأعمال ودور الطالب وتواريخها. لا هوية أو مرفقات أو روابط تلقائيًا. تعليمات النموذج تمنع الاختلاق والتعامل مع ملاحظات الطالب كأوامر؛ يلزم المسؤول مراجعة صحة الصياغة قبل الاعتماد. غياب المفتاح يعطل التوليد برسالة إعداد ولا يعرض نصًا ثابتًا كناتج AI. الخدمة الوهمية محقونة في NODE_ENV=test فقط.
+
+المسودة والمعتمد منفصلان مع revision ولقطة هوية وبصمة مصدر. إعادة الصياغة لا تستبدل المعتمد، وفتح السيرة وتنزيلها لا يستدعيان النموذج. المصدر المتغير ينبه المسؤول ويمنع اعتماد مسودة قديمة قبل مراجعتها وحفظها أو إعادة صياغتها. AI حتى طلبين جاريين لكل عملية، 5 طلبات/10 دقائق لكل IP ومهلة افتراضية 60 ثانية. قفل لكل طالب في PostgreSQL ينتهي تلقائيًا.
+
+## PDF
+
+ثبّت المتصفح من جذر المشروع: `npx playwright install chromium`. في Linux قد تحتاج `npx playwright install --with-deps chromium` وصلاحية تثبيت مكتبات النظام؛ لم يُختبر تثبيته على Linux هنا. يشغّل API المتصفح تحت مستخدم الخدمة. اشحن backend/assets وfrontend/dist والخطوط والاعتماديات اللازمة في النشر.
+
+Chromium ينشئ PDF من المعتمد فقط: A4 أبيض وRTL وخطوط محلية مضمنة ونص متصل قابل للاستخراج والبحث. لا الأقسام الفارغة أو ملاحظات الاستكمال أو التنقل. المشرفون مجموعة في النهاية لا تنقسم، والأسماء مرة لكل طالب. النص يُهرب، وشبكة Chromium محظورة، والشعاران محليان. تُصحح خرائط Unicode دون تغيير الرسم.
+
+الهوية والمشرفون من النسخة المعتمدة؛ شعار المدرسة الحالي من التخزين الخاص، وشعار الوزارة من backend/assets/branding. تغيير إعدادات المصدر يظهر تنبيه تحديث. الدفعة 1–20 مع فهرس، وكل طالب يبدأ صفحة جديدة. نتائج التصفية تشمل السير المعتمدة عبر كل الصفحات وتُرفض إذا تجاوزت الحد. عملية PDF واحدة، مهلة 60 ثانية وحجم 20 MiB، وإغلاق Chromium في finally دون ملفات تصدير مؤقتة. الحدود الفردية 10/دقيقة والمجمعة 5/دقيقة لكل IP. تعدد عمليات API يحتاج حدودًا وتنسيقًا مشتركين غير منفذين حاليًا.
+
+## المرفقات والحماية
+
+خدمة مستقلة في services/storage؛ صور JPEG/PNG/WebP وPDF غير مشفر فقط، 6 ملفات لكل عمل و10 MiB لكل ملف. يفحص البايتات وبنية PDF ويعيد ترميز الصور بحد 16 مليون بكسل. لا تنفيذيات أو HTML أو SVG أو ملفات تالفة. أسماء التخزين عشوائية؛ الأصلية للعرض. مجلد الملفات ليس عامًا؛ القراءة والحذف يمران بصلاحية المسؤول وارتباط الطالب والعمل والمرفق الصحيحين. روابط الأعمال http/https تفتح من المتصفح بـnoopener/noreferrer، ولا يجلبها الخادم.
+
+الحذف يضيف مهام StorageDeletion في معاملة حذف البيانات، ثم يعيد المحاولة بعد العملية وعند بدء الخادم وكل دقيقة. فشل الحذف يترك المهمة في القاعدة، وفشل الرفع يعيد الملفات. تُسوّى الملفات غير المرتبطة بعد ساعة لحماية الرفع الجاري. الإنتاج يحتاج قرصًا دائمًا أو محول تخزين كائنات؛ القرص المؤقت لا يضمن الحفظ.
+
+الجلسات HttpOnly وSameSite Strict وSecure/__Host في الإنتاج، مع hash للرمز في القاعدة. كل طلب تغيير يحتاج Origin مطابقًا وكوكي CSRF موقعة وترويسة x-csrf-token؛ الواجهة تنفذها. دخول 5/دقيقة وتسجيل عام 5/ساعة لكل IP. ضبط الثقة بالوكيل عند النشر يقتصر على الوكيل المعروف، وتعدد النسخ يحتاج مخزن حدود مشتركًا. لا بيانات طلاب أو أسرار أو استجابات مزود خام في سجلات الأخطاء.
+
+## الاختبارات
+
+من جذر المشروع: npm run typecheck، npm run lint، npm run build، npm run format:check. اختبارات API تحتاج TEST_DATABASE_URL لقاعدة منفصلة بترحيلات مطبقة:
+
+```powershell
+$env:TEST_DATABASE_URL='<اتصال قاعدة منفصلة ينتهي اسمها بـ_test>'
+Push-Location backend
+$env:DATABASE_URL=$env:TEST_DATABASE_URL
+npx prisma migrate deploy
+Remove-Item Env:DATABASE_URL
+Pop-Location
+npm test
+```
+
+غياب قاعدة الاختبار يؤدي إلى تخطي اختبارات القاعدة، وليس تحققًا كاملًا. المتصفح يستعمل Edge افتراضيًا؛ يحتاج المعاينة وBROWSER_TESTS_ALLOW_DB_WRITE=yes. رحلة السيرة تعزل API على 3002 وVite على 5187 وقاعدة _test مع AI اختباري وPDF حقيقي. بقية الرحلات تنشئ وتنظف سجلات مؤقتة بقاعدة التطوير. لا تشغل بناء shared بالتزامن مع المتصفح لأن watcher قد يعيد تشغيل الخادم. النتائج الفعلية في docs/PROGRESS.md.
+
+## النشر
+
+بعد npm run build شغّل `npm run start -w @quba/api` مع NODE_ENV=production وAPP_ORIGIN HTTPS وأسرار مستقلة وPostgreSQL وSTORAGE_DIR دائم وChromium. قدم frontend/dist من نفس الأصل مع إعادة مسارات React إلى index.html وتوجيه /api و/health إلى API. Vite preview ليس خادم إنتاج ولا يوفر proxy الإنتاج. لا نشر تلقائي، ولا نجاح نشر إنتاج متحقق هنا. تنبيهات Prisma غير المباشرة الأربع عالية الخطورة موثقة في التقرير وتحتاج مراجعة؛ لا تستخدم audit fix --force لتبديل التقنية قسرًا.
+
+## النسخ الاحتياطي والاسترجاع
+
+أوقف API أو استخدم الصيانة عند نسخ قاعدة البيانات ومجلد STORAGE_DIR معًا. احفظ النسخ في مكان خاص ومشفر. تحتاج أدوات عميل PostgreSQL في PATH، وهذه إرشادات لم يُختبر الاسترجاع منها في الجلسة. بدّل القيم للبيئة الفعلية وأدخل كلمة المرور عند الطلب:
+
+```powershell
+New-Item -ItemType Directory -Force -Path C:\private-backups\quba
+pg_dump -h 127.0.0.1 -p 5432 -U quba -W -d quba_talents -Fc -f C:\private-backups\quba\database.dump
+Copy-Item -LiteralPath .\backend\.data\uploads -Destination C:\private-backups\quba\uploads -Recurse
+createdb -h 127.0.0.1 -p 5432 -U quba -W quba_talents_restore
+pg_restore -h 127.0.0.1 -p 5432 -U quba -W -d quba_talents_restore --exit-on-error C:\private-backups\quba\database.dump
+```
+
+للاسترجاع وجه DATABASE_URL إلى القاعدة الجديدة، واسترجع مجلد الملفات إلى STORAGE_DIR فارغ والأسرار من مخزنها الخاص. شغّل db:deploy للترحيلات الأحدث قبل API، ثم تحقق من الدخول والمرفقات والسير. لا تعد إنشاء المسؤول أو تستخدم seed بعد استرجاع الحسابات. نسخة القاعدة وحدها لا تحفظ بايتات الملفات والشعار.

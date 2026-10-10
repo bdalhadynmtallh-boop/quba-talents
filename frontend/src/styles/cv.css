@@ -1,0 +1,74 @@
+.modal {
+  margin: auto;
+}
+.cv-actions {
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cv-actions .management-actions {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.editor-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.batch-export {
+  margin: 20px 0;
+}
+.batch-export .management-actions {
+  flex-wrap: wrap;
+}
+.cv-paper {
+  overflow-wrap: anywhere;
+}
+.cv-school {
+  justify-content: space-between;
+}
+.cv-school-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.ministry-mark {
+  position: relative;
+  overflow: hidden;
+  width: 110px;
+  height: 80px;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 4px;
+}
+.ministry-mark img {
+  position: absolute;
+  width: 230px;
+  height: 230px;
+  max-width: none;
+  top: -77px;
+  left: -60px;
+  object-fit: contain;
+}
+.cv-paper h4 {
+  margin-bottom: 8px;
+}
+.cv-paper .editor-item:last-child {
+  border-bottom: 0;
+}
+@media (max-width: 780px) {
+  .cv-actions .management-actions {
+    width: 100%;
+  }
+  .cv-actions .button,
+  .batch-export .button {
+    width: 100%;
+    white-space: normal;
+  }
+  .cv-actions {
+    display: block;
+  }
+  .cv-actions .management-actions {
+    margin-top: 14px;
+  }
+}

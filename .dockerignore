@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/.data
+**/test-results
+**/playwright-report
+**/*.log
+**/*.tsbuildinfo
+.git
+.vercel
+backend/src/generated
+backend/docs
+backend/tests
+frontend/src
+frontend/tests

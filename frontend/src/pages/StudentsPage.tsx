@@ -1,13 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Inbox, Copy } from 'lucide-react';
-import {
-  gradeLabels,
-  type PageResult,
-  type StudentView,
-  type YearSettings,
-  type CatalogView,
-} from '@quba/shared';
+import { type PageResult, type StudentView } from '@quba/shared';
 import { RequireAdmin } from '../features/auth/RequireAdmin';
 import { StudentCard } from '../features/students/StudentCard';
 import { StudentForm } from '../features/students/StudentForm';
@@ -30,21 +24,15 @@ function StudentsContent() {
   const selected = selection.scope === params.toString() ? selection.ids : [];
   const setSelected = (ids: string[]) => setSelection({ scope: params.toString(), ids });
   const resource = useResource<PageResult<StudentView>>(`/students?${params.toString()}`);
-  const years = useResource<YearSettings>('/academic-years');
-  const catalogs = useResource<CatalogView>('/school/catalogs');
-  const { reload: reloadStudents } = resource,
-    { reload: reloadYears } = years,
-    { reload: reloadCatalogs } = catalogs;
+  const { reload: reloadStudents } = resource;
   useEffect(() => {
     const update = () => {
       reloadStudents();
-      reloadYears();
-      reloadCatalogs();
       setSelection({ scope: '', ids: [] });
     };
     window.addEventListener('school-data-changed', update);
     return () => window.removeEventListener('school-data-changed', update);
-  }, [reloadStudents, reloadYears, reloadCatalogs]);
+  }, [reloadStudents]);
   const [adding, setAdding] = useState(false),
     [requests, setRequests] = useState(false),
     [copyMessage, setCopyMessage] = useState('');
@@ -88,18 +76,8 @@ function StudentsContent() {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
           const next = new URLSearchParams();
-          for (const key of [
-            'search',
-            'grade',
-            'talent',
-            'classroomId',
-            'academicYearId',
-            'status',
-            'approved',
-          ]) {
-            const value = String(data.get(key) ?? '').trim();
-            if (value) next.set(key, value);
-          }
+          const search = String(data.get('search') ?? '').trim();
+          if (search) next.set('search', search);
           setParams(next);
         }}
       >
@@ -113,72 +91,6 @@ function StudentsContent() {
             maxLength={120}
           />
         </div>
-        <select
-          className="filter-select"
-          name="grade"
-          aria-label="تصفية بالصف"
-          defaultValue={params.get('grade') ?? ''}
-        >
-          <option value="">كل الصفوف</option>
-          {Object.entries(gradeLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter-select"
-          name="talent"
-          aria-label="تصفية بالموهبة"
-          defaultValue={params.get('talent') ?? ''}
-        >
-          <option value="">كل المواهب</option>
-          {(resource.data ?? resource.previousData)?.talents?.map((talent) => (
-            <option key={talent.id} value={talent.id}>
-              {talent.name}
-              {!talent.active ? ' (معطلة)' : ''}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter-select"
-          name="classroomId"
-          aria-label="تصفية بالفصل"
-          defaultValue={params.get('classroomId') ?? ''}
-        >
-          <option value="">كل الفصول</option>
-          {catalogs.data?.classrooms.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-              {!c.active ? ' (معطل)' : ''}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter-select"
-          name="academicYearId"
-          aria-label="تصفية بالسنة"
-          defaultValue={params.get('academicYearId') ?? ''}
-        >
-          <option value="">السنة المفتوحة</option>
-          {years.data?.years.map((y) => (
-            <option key={y.id} value={y.id}>
-              {y.label}
-              {y.status === 'CLOSED' ? ' (مغلقة)' : ''}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter-select"
-          name="status"
-          aria-label="حالة الطالب"
-          defaultValue={params.get('status') ?? ''}
-        >
-          <option value="">حسب السنة (نشط / مؤرشف)</option>
-          <option value="ACTIVE">نشط</option>
-          <option value="ARCHIVED">مؤرشف</option>
-        </select>
-        {params.get('approved') && <input type="hidden" name="approved" value="true" />}
         <button className="button" type="submit">
           بحث
         </button>
@@ -216,7 +128,7 @@ function StudentsContent() {
             ) : (
               <StatusPanel
                 title="لا توجد نتائج"
-                description="أضف طالبًا جديدًا أو غيّر خيارات البحث والتصفية."
+                description="أضف طالبًا جديدًا أو غيّر اسم البحث."
               />
             )}
             <Pagination

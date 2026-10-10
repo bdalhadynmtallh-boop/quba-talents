@@ -113,8 +113,6 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   const card = page.locator('.student-card').filter({ hasText: `${prefix} أحمد` });
   await expect(card).toHaveCount(1);
   await page.getByLabel('البحث باسم الطالب').fill(`${prefix} أحمد`);
-  await page.getByLabel('تصفية بالصف').selectOption('SECOND');
-  await page.getByLabel('تصفية بالموهبة').selectOption({ label: 'البرمجة' });
   await page.getByRole('button', { name: 'بحث', exact: true }).click();
   await expect(page.locator('.student-card')).toHaveCount(1);
   await card.getByRole('link', { name: 'عرض ملف الطالب' }).click();

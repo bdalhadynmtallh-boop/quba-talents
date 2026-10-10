@@ -368,8 +368,9 @@ test('Admin settings, fixed lists, Arabic search, yearly dashboard, rollover and
     path: resolve('backend/docs/screenshots/academic-dashboard-desktop.png'),
     fullPage: true,
   });
-  await page.getByLabel('تصفية بالسنة').selectOption({ label: oldLabel + ' (مغلقة)' });
-  await page.getByRole('button', { name: 'بحث', exact: true }).click();
+  const years = await (await page.request.get('/api/academic-years')).json();
+  const closedYear = years.years.find((year: { label: string }) => year.label === oldLabel);
+  await page.goto(`/students?academicYearId=${closedYear.id}`);
   await expect(page.locator('.student-card')).toHaveCount(1);
   await expect(page.locator('.student-card')).toContainText('خالد');
   await page.locator('.student-card').getByRole('link', { name: 'عرض ملف الطالب' }).click();

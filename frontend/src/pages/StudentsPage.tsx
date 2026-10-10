@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Inbox, Copy } from 'lucide-react';
-import { type PageResult, type StudentView } from '@quba/shared';
+import { type PageResult, type StudentView, type YearSettings } from '@quba/shared';
 import { RequireAdmin } from '../features/auth/RequireAdmin';
 import { StudentCard } from '../features/students/StudentCard';
 import { StudentForm } from '../features/students/StudentForm';
@@ -24,15 +24,18 @@ function StudentsContent() {
   const selected = selection.scope === params.toString() ? selection.ids : [];
   const setSelected = (ids: string[]) => setSelection({ scope: params.toString(), ids });
   const resource = useResource<PageResult<StudentView>>(`/students?${params.toString()}`);
-  const { reload: reloadStudents } = resource;
+  const years = useResource<YearSettings>('/academic-years');
+  const { reload: reloadStudents } = resource,
+    { reload: reloadYears } = years;
   useEffect(() => {
     const update = () => {
       reloadStudents();
+      reloadYears();
       setSelection({ scope: '', ids: [] });
     };
     window.addEventListener('school-data-changed', update);
     return () => window.removeEventListener('school-data-changed', update);
-  }, [reloadStudents]);
+  }, [reloadStudents, reloadYears]);
   const [adding, setAdding] = useState(false),
     [requests, setRequests] = useState(false),
     [copyMessage, setCopyMessage] = useState('');
@@ -78,6 +81,8 @@ function StudentsContent() {
           const next = new URLSearchParams();
           const search = String(data.get('search') ?? '').trim();
           if (search) next.set('search', search);
+          const academicYearId = String(data.get('academicYearId') ?? '');
+          if (academicYearId) next.set('academicYearId', academicYearId);
           setParams(next);
         }}
       >
@@ -91,6 +96,20 @@ function StudentsContent() {
             maxLength={120}
           />
         </div>
+        <select
+          className="filter-select"
+          name="academicYearId"
+          aria-label="تصفية بالسنة"
+          defaultValue={params.get('academicYearId') ?? ''}
+        >
+          <option value="">السنة المفتوحة</option>
+          {years.data?.years.map((year) => (
+            <option key={year.id} value={year.id}>
+              {year.label}
+              {year.status === 'CLOSED' ? ' (مغلقة)' : ''}
+            </option>
+          ))}
+        </select>
         <button className="button" type="submit">
           بحث
         </button>

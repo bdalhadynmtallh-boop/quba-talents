@@ -83,7 +83,7 @@ npm test
 
 ## النشر
 
-بعد npm run build شغّل `npm run start -w @quba/api` مع NODE_ENV=production وAPP_ORIGIN HTTPS وأسرار مستقلة وPostgreSQL وSTORAGE_DIR دائم وChromium. قدم frontend/dist من نفس الأصل مع إعادة مسارات React إلى index.html وتوجيه /api و/health إلى API. Vite preview ليس خادم إنتاج ولا يوفر proxy الإنتاج. لا نشر تلقائي، ولا نجاح نشر إنتاج متحقق هنا. تنبيهات Prisma غير المباشرة الأربع عالية الخطورة موثقة في التقرير وتحتاج مراجعة؛ لا تستخدم audit fix --force لتبديل التقنية قسرًا.
+بعد npm run build شغّل `npm run start -w @quba/api` مع NODE_ENV=production وAPP_ORIGIN HTTPS وأسرار مستقلة وPostgreSQL وSTORAGE_DIR دائم وChromium. قدم frontend/dist من نفس الأصل مع إعادة مسارات React إلى index.html وتوجيه /api و/health إلى API. Vite preview ليس خادم إنتاج ولا يوفر proxy الإنتاج. الواجهة منشورة على Vercel والخادم على Render Free، مع PostgreSQL ومرفقات خاصة في Supabase. تفاصيل الإعداد والاختبارات والحدود في docs/DEPLOYMENT.md. نشر الخادم يدوي، ونشر الواجهة مرتبط بـGitHub. تنبيهات Prisma غير المباشرة الأربع عالية الخطورة موثقة في التقرير وتحتاج مراجعة؛ لا تستخدم audit fix --force لتبديل التقنية قسرًا.
 
 ## النسخ الاحتياطي والاسترجاع
 
@@ -98,3 +98,5 @@ pg_restore -h 127.0.0.1 -p 5432 -U quba -W -d quba_talents_restore --exit-on-err
 ```
 
 للاسترجاع وجه DATABASE_URL إلى القاعدة الجديدة، واسترجع مجلد الملفات إلى STORAGE_DIR فارغ والأسرار من مخزنها الخاص. شغّل db:deploy للترحيلات الأحدث قبل API، ثم تحقق من الدخول والمرفقات والسير. لا تعد إنشاء المسؤول أو تستخدم seed بعد استرجاع الحسابات. نسخة القاعدة وحدها لا تحفظ بايتات الملفات والشعار.
+
+للنشر المجاني استخدم STORAGE_PROVIDER=supabase بدل التخزين المحلي، مع الحاوية الخاصة والمفتاح الخاص وشهادة القاعدة حسب docs/DEPLOYMENT.md. النسخ الاحتياطي السحابي يحتاج تصدير PostgreSQL وملفات الحاوية؛ أوامر النسخ المحلية أعلاه تخص LocalStorage فقط.

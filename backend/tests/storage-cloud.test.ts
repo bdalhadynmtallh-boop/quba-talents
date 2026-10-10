@@ -24,10 +24,7 @@ test('Private object storage validates uploads, reads them and cleans up failed 
       files.set(key, bytes);
       res.statusCode = failUpload ? 503 : 200;
       res.end(JSON.stringify(failUpload ? { message: 'Test outage' } : { Key: key }));
-    } else if (
-      req.method === 'GET' &&
-      path.startsWith('/storage/v1/object/quba-private/')
-    ) {
+    } else if (req.method === 'GET' && path.startsWith('/storage/v1/object/quba-private/')) {
       if (!files.has(key)) {
         res.statusCode = 404;
         res.end('{}');

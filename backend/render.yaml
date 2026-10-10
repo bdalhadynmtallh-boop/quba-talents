@@ -32,6 +32,6 @@ services:
       - key: AI_MODEL
         value: qwen/qwen3.8-omni-flash:free
       - key: AI_TIMEOUT_MS
-        value: "60000"
+        value: '60000'
       - key: AI_OUTPUT_MODE
         value: json_object

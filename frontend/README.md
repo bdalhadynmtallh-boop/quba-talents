@@ -20,3 +20,8 @@ frontend/
 لتعديل السيرة المعروضة: src/features/cv/CvPreview.tsx وCvEditor.tsx وstyles/cv.css. قالب PDF المطبوع مستقل في backend/src/services/pdf/template.ts.
 
 شعار الوزارة في src/assets/ministry-education.png نسخة من الأصل الرسمي الموثق في backend/assets/branding/README.md؛ لا يتطلب اتصالًا بموقع الوزارة. المخططات التي تستعملها الواجهة تأتي من حزمة @quba/shared داخل backend/shared.
+
+## النشر
+
+الواجهة الإنتاجية: https://quba-talents.vercel.app . مسارات API وhealth تُوجّه إلى خادم Render الخاص بالمشروع؛ لا تُحفظ مفاتيح الخدمات في الواجهة.
+

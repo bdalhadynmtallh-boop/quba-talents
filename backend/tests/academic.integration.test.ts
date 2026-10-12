@@ -87,6 +87,7 @@ test(
       200,
     );
     const base = {
+      phoneNumber: '0501234567',
       classroomId: catalog.classroom.id,
       primaryTalentId: catalog.programming.id,
       additionalTalentIds: [],
@@ -205,6 +206,7 @@ test(
         );
         const payload = {
           name: `طلب ${prefix}`,
+          phoneNumber: base.phoneNumber,
           grade: 'FIRST',
           classroomId: catalog.classroom.id,
           primaryTalentId: customId,
@@ -295,6 +297,7 @@ test(
           assert.equal(
             (
               await client.post(`/api/students/${student.id}/cv/approve`, {
+                studentReviewed: true,
                 revision: state.revision,
               })
             ).statusCode,
@@ -435,9 +438,9 @@ test(
           },
         });
         const result = await client.post(`/api/registrations/${request.id}/approve`, {
-          ...base,
-          grade: 'FIRST',
-          name: request.name,
+          student: { ...base, grade: 'FIRST', name: request.name },
+          targetAcademicYearId: nextId,
+          confirmAcademicPlacement: true,
         });
         assert.equal(result.statusCode, 200, result.body);
         assert.equal(

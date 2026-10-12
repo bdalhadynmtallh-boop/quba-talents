@@ -38,7 +38,7 @@ export function printTemplate(
         i,
       ) => `<article class="student ${items.length === 1 || i === 0 ? 'single' : ''}">
   <div class="school"><div class="school-brand">${logo ? `<img alt="شعار المدرسة" src="${logo}">` : ''}<div class="official-header">${cvHeaderLines.map((line) => `<span>${e(line)}</span>`).join('')}</div></div>${ministryLogo ? `<div class="ministry-mark"><img alt="شعار وزارة التعليم" src="${ministryLogo}"></div>` : ''}</div>
-  <header class="identity"><h1>السيرة الذاتية — ملف الموهبة والإنجاز</h1><h2>${e(id.name)}</h2><p>${e(gradeLabels[id.grade])} · الفصل ${e(id.classroom)}</p>${id.academicYearLabel ? `<p>السنة الدراسية: ${e(id.academicYearLabel)}</p>` : ''}<p>الموهبة الرئيسية: ${e(id.primaryTalent)}</p></header>
+  <header class="identity"><h1>السيرة الذاتية — ملف الموهبة والإنجاز</h1><h2>${e(id.name)}</h2><p>${e(gradeLabels[id.grade])} · الفصل ${e(id.classroom)}</p>${id.academicYearLabel ? `<p>السنة الدراسية: ${e(id.academicYearLabel)}</p>` : ''}<p>الموهبة الرئيسية: ${e(id.primaryTalent)}</p>${id.phoneNumber ? `<p>رقم الجوال: <bdi dir="ltr">${e(id.phoneNumber)}</bdi></p>` : ''}</header>
   ${section('نبذة عن الطالب', c.summary ? `<p>${e(c.summary)}</p>` : '')}
   ${section('المواهب والاهتمامات', list(c.talents))}${section('المهارات', list(c.skills))}
   ${section('مهارات مقترحة للتطوير', c.suggestedSkills?.length ? `<p class="hint">اقتراحات للتعلّم، لا تعبّر عن مهارات مكتسبة.</p>${list(c.suggestedSkills)}` : '')}

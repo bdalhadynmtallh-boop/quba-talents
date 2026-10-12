@@ -1,18 +1,10 @@
-import {
-  cvSchema,
-  studentSchema,
-  schoolSchema,
-  normalizeArabic,
-  type StudentInput,
-} from '@quba/shared';
+import { cvSchema, storedStudentSchema, normalizeArabic, type StudentInput } from '@quba/shared';
 import {
   Prisma,
   type Student,
   type StudentCv,
   type Work,
   type Attachment,
-  type Supervisor,
-  type SchoolSettings,
   type Classroom,
   type Talent,
   type AcademicYear,
@@ -63,8 +55,9 @@ export function studentView(
     works?: Array<Work & { attachments: Attachment[] }>;
   },
 ) {
-  const input = studentSchema.parse({
+  const input = storedStudentSchema.parse({
     name: student.name,
+    phoneNumber: student.phoneNumber,
     grade: student.grade,
     classroomId: student.classroomId,
     primaryTalentId: student.primaryTalentId,
@@ -96,15 +89,5 @@ export function studentView(
         }
       : null,
     works: student.works?.map(workView) ?? [],
-  };
-}
-export function schoolView(school: SchoolSettings & { supervisors: Supervisor[] }) {
-  return {
-    ...schoolSchema.parse({
-      name: school.name,
-      supervisors: school.supervisors.map(({ name, role }) => ({ name, role })),
-    }),
-    hasLogo: !!school.logoKey,
-    updatedAt: school.updatedAt.toISOString(),
   };
 }

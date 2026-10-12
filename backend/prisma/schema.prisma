@@ -30,6 +30,7 @@ model Admin {
   passwordHash String
   sessions Session[]
   reviewedRequests RegistrationRequest[]
+  cvReviews CvReview[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -47,6 +48,7 @@ model Session {
 model Student {
   id String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(120)
+  phoneNumber String @default("") @db.VarChar(16)
   grade Grade
   nameSearch String
   classroomId String @db.Uuid
@@ -76,8 +78,14 @@ model Student {
 model RegistrationRequest {
   id String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(120)
+  phoneNumber String @default("") @db.VarChar(16)
   grade Grade
   nameSearch String
+  requestKey String? @unique @db.Uuid
+  payloadHash String? @db.Char(64)
+  academicYearId String? @db.Uuid
+  academicYear AcademicYear? @relation(fields:[academicYearId], references:[id], onDelete:Restrict)
+  studentDeletedAt DateTime?
   classroomId String @db.Uuid
   classroom Classroom @relation(fields:[classroomId], references:[id], onDelete:Restrict)
   primaryTalentId String @db.Uuid
@@ -96,11 +104,15 @@ model RegistrationRequest {
   @@index([nameSearch])
   @@index([classroomId])
   @@index([primaryTalentId])
+  @@index([reviewedById])
+  @@index([academicYearId, status, createdAt])
+  @@index([phoneNumber])
 }
 model StudentCv {
   id String @id @default(uuid()) @db.Uuid
   studentId String @unique @db.Uuid
   student Student @relation(fields:[studentId], references:[id], onDelete:Cascade)
+  reviews CvReview[]
   content String @default("")
   draft Json?
   approved Json?
@@ -116,6 +128,20 @@ model StudentCv {
   generationExpiresAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model CvReview {
+  id String @id @default(uuid()) @db.Uuid
+  cvId String @db.Uuid
+  cv StudentCv @relation(fields:[cvId], references:[id], onDelete:Cascade)
+  revision Int
+  sourceHash String @db.Char(64)
+  reviewerId String? @db.Uuid
+  reviewer Admin? @relation(fields:[reviewerId], references:[id], onDelete:SetNull)
+  reviewerName String @db.VarChar(100)
+  studentReviewedAt DateTime
+  approvedAt DateTime @default(now())
+  @@unique([cvId, revision])
+  @@index([reviewerId])
 }
 model Work {
   id String @id @default(uuid()) @db.Uuid
@@ -145,7 +171,7 @@ model Attachment {
 }
 model SchoolSettings {
   id String @id @default("school")
-  name String @default("موهوبين ثانوية قباء")
+  name String @default("موهوبين مجمع ثانوية قباء")
   logoKey String? @unique
   logoName String?
   logoMimeType String?
@@ -181,6 +207,7 @@ model AcademicYear {
   rolloverRequestId String? @unique @db.Uuid
   rolloverResult Json?
   students Student[]
+  requests RegistrationRequest[]
 }
 model Classroom {
   id String @id @default(uuid()) @db.Uuid

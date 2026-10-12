@@ -3,7 +3,7 @@ services:
   - type: web
     name: quba-talents-api
     runtime: docker
-    region: frankfurt
+    region: singapore
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .

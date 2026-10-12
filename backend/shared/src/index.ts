@@ -1,384 +1,74 @@
-import { z } from 'zod';
-export function normalizeArabic(value: string): string {
-  return value
-    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-    .replace(/[أإآٱ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
-// Catalog names additionally ignore the Arabic definite article, so برمجة / البرمجه collide.
-export function catalogNameKey(value: string): string {
-  return normalizeArabic(value).replace(/(^| )ال(?=[\u0621-\u064A])/g, '$1');
-}
-export const academicYearLabelSchema = z
-  .object({ label: z.string().trim().min(2).max(40) })
-  .strict();
-export const rolloverSchema = academicYearLabelSchema
-  .extend({ yearId: z.uuid(), requestId: z.uuid() })
-  .strict();
-export const catalogSchema = z
-  .object({
-    name: z.string().trim().min(1).max(30),
-    sortOrder: z.number().int().min(0).max(10000).default(0),
-    active: z.boolean().default(true),
-  })
-  .strict();
-export const talentCatalogSchema = catalogSchema
-  .extend({ name: z.string().trim().min(2).max(80) })
-  .strict();
-export interface CatalogItem {
-  id: string;
-  name: string;
-  sortOrder: number;
-  active: boolean;
-}
-export interface CatalogView {
-  classrooms: CatalogItem[];
-  talents: CatalogItem[];
-}
-export interface AcademicYearView {
-  id: string;
-  label: string;
-  status: 'OPEN' | 'CLOSED';
-  openedAt: string;
-  closedAt: string | null;
-}
-export interface YearSettings {
-  years: AcademicYearView[];
-  current: AcademicYearView;
-  counts: { FIRST: number; SECOND: number; THIRD: number };
-}
-export interface DashboardView {
-  academicYear: AcademicYearView;
-  pendingRequests: number;
-  approvedCvs: number;
-  grades: { FIRST: number; SECOND: number; THIRD: number };
-  talents: { id: string; name: string; count: number }[];
-}
-export const loginSchema = z
-  .object({
-    email: z
-      .email()
-      .max(254)
-      .transform((value) => value.toLowerCase()),
-    password: z.string().min(1).max(256),
-  })
-  .strict();
-export const adminSetupSchema = loginSchema.extend({
-  name: z.string().trim().min(2).max(100),
-  password: z.string().min(14).max(256),
-});
-export const gradeSchema = z.enum(['FIRST', 'SECOND', 'THIRD']);
-export const dateSchema = z.iso.date().nullable().optional();
-export const achievementSchema = z
-  .object({ title: z.string().trim().min(1).max(500), date: dateSchema })
-  .strict();
-export const supervisorSchema = z
-  .object({ name: z.string().trim().min(2).max(100), role: z.string().trim().min(2).max(120) })
-  .strict();
-const studentFieldsSchema = z
-  .object({
-    name: z.string().trim().min(2).max(120),
-    grade: gradeSchema,
-    classroomId: z.uuid(),
-    primaryTalentId: z.uuid(),
-    additionalTalentIds: z
-      .array(z.uuid())
-      .max(10)
-      .default([])
-      .refine((ids) => new Set(ids).size === ids.length),
-    skills: z.array(z.string().trim().min(1).max(120)).max(30).default([]),
-    achievements: z.array(achievementSchema).max(30).default([]),
-    notes: z.string().trim().max(5000).default(''),
-    supervisorOverrides: z.array(supervisorSchema).max(10).nullable().default(null),
-  })
-  .strict();
-export const studentSchema = studentFieldsSchema.refine(
-  (value) => !value.additionalTalentIds.includes(value.primaryTalentId),
-  { message: 'لا تكرر الموهبة الرئيسية.', path: ['additionalTalentIds'] },
-);
-export const registrationSchema = studentFieldsSchema
-  .pick({
-    name: true,
-    grade: true,
-    classroomId: true,
-    primaryTalentId: true,
-    additionalTalentIds: true,
-  })
-  .extend({ description: z.string().trim().min(10).max(1000) })
-  .strict()
-  .refine((value) => !value.additionalTalentIds.includes(value.primaryTalentId), {
-    message: 'لا تكرر الموهبة الرئيسية.',
-    path: ['additionalTalentIds'],
-  });
-const namedCatalogFields = {
-  classroom: z
-    .string()
-    .trim()
-    .min(1)
-    .max(30)
-    .refine((name) => !!catalogNameKey(name)),
-  primaryTalent: z
-    .string()
-    .trim()
-    .min(2)
-    .max(80)
-    .refine((name) => !!catalogNameKey(name)),
-  additionalTalents: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(2)
-        .max(80)
-        .refine((name) => !!catalogNameKey(name)),
-    )
-    .max(10)
-    .default([]),
-};
-function distinctTalentNames(value: { primaryTalent: string; additionalTalents: string[] }) {
-  const keys = [value.primaryTalent, ...value.additionalTalents].map(catalogNameKey);
-  return new Set(keys).size === keys.length;
-}
-export const namedStudentSchema = studentFieldsSchema
-  .omit({ classroomId: true, primaryTalentId: true, additionalTalentIds: true })
-  .extend(namedCatalogFields)
-  .strict()
-  .refine(distinctTalentNames, { message: 'لا تكرر المواهب.', path: ['additionalTalents'] });
-export const namedRegistrationSchema = z
-  .object({
-    name: studentFieldsSchema.shape.name,
-    grade: gradeSchema,
-    ...namedCatalogFields,
-    description: z.string().trim().min(10).max(1000),
-  })
-  .strict()
-  .refine(distinctTalentNames, { message: 'لا تكرر المواهب.', path: ['additionalTalents'] });
-// Accept older clients during a rolling deployment; stored relationships keep their IDs.
-export const studentSubmissionSchema = z.union([namedStudentSchema, studentSchema]);
-export const registrationSubmissionSchema = z.union([namedRegistrationSchema, registrationSchema]);
-export type NamedStudentInput = z.infer<typeof namedStudentSchema>;
-export const safeUrlSchema = z
-  .string()
-  .trim()
-  .max(2048)
-  .refine((value) => {
-    if (!value) return true;
-    try {
-      const url = new URL(value);
-      return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password;
-    } catch {
-      return false;
-    }
-  }, 'أدخل رابط http أو https صحيحًا.');
-export const workSchema = z
-  .object({
-    title: z.string().trim().min(2).max(150),
-    description: z.string().trim().max(3000).default(''),
-    date: dateSchema,
-    studentRole: z.string().trim().max(500).default(''),
-    url: safeUrlSchema.default(''),
-  })
-  .strict();
-export const schoolSchema = z
-  .object({
-    name: z.string().trim().min(2).max(150),
-    supervisors: z.array(supervisorSchema).max(10),
-  })
-  .strict();
-export const listQuerySchema = z
-  .object({
-    page: z.coerce.number().int().min(1).max(10000).default(1),
-    pageSize: z.coerce.number().int().min(1).max(50).default(12),
-    search: z.string().trim().max(120).default(''),
-    grade: gradeSchema.optional(),
-    talent: z.uuid().optional(),
-    classroomId: z.uuid().optional(),
-    academicYearId: z.uuid().optional(),
-    status: z.enum(['ACTIVE', 'ARCHIVED']).optional(),
-    approved: z.enum(['true']).optional(),
-  })
-  .strict();
-export const registrationQuerySchema = z
-  .object({
-    page: z.coerce.number().int().min(1).max(10000).default(1),
-    pageSize: z.coerce.number().int().min(1).max(50).default(10),
-    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
-  })
-  .strict();
-export const idParamsSchema = z.object({
-  studentId: z.uuid().optional(),
-  workId: z.uuid().optional(),
-  attachmentId: z.uuid().optional(),
-  id: z.uuid().optional(),
-});
-export const legacyCvSchema = z
-  .object({
-    version: z.literal(1),
-    name: z.string().min(2),
-    grade: gradeSchema,
-    classroom: z.string(),
-    primaryTalent: z.string(),
-    about: z.string().max(5000),
-    skills: z.array(z.string()),
-    achievements: z.array(achievementSchema),
-    works: z.array(workSchema),
-    supervisors: z.array(supervisorSchema),
-  })
-  .strict();
-export const cvContentSchema = z
-  .object({
-    summary: z.string().trim().max(5000),
-    talents: z.array(z.string().trim().min(1).max(200)).max(20),
-    skills: z.array(z.string().trim().min(1).max(200)).max(40),
-    suggestedSkills: z.array(z.string().trim().min(1).max(200)).max(3).optional(),
-    futureGoals: z.array(z.string().trim().min(1).max(300)).max(3).optional(),
-    achievements: z.array(achievementSchema.extend({ date: z.iso.date().nullable() })).max(40),
-    projects: z
-      .array(
-        z
-          .object({
-            title: z.string().trim().min(1).max(150),
-            description: z.string().trim().max(2000),
-            studentRole: z.string().trim().max(500),
-            date: z.iso.date().nullable(),
-          })
-          .strict(),
-      )
-      .max(40),
-    missingInformation: z.array(z.string().trim().min(1).max(300)).max(15),
-  })
-  .strict();
-export const cvSchema = cvContentSchema.extend({ version: z.literal(2) }).strict();
-// New generation requires three suggestions; stored version 2 CVs may omit them.
-export const cvGenerationContentSchema = cvContentSchema
-  .extend({
-    suggestedSkills: z.array(z.string().trim().min(1).max(200)).length(3),
-    futureGoals: z.array(z.string().trim().min(1).max(300)).length(3),
-  })
-  .strict();
-export const cvHeaderLines = [
-  'المملكة العربية السعودية',
-  'الإدارة العامة للتعليم بمنطقة المدينة المنورة',
-  'ثانوية قباء',
-] as const;
-export const cvSnapshotSchema = z
-  .object({
-    name: z.string(),
-    grade: gradeSchema,
-    classroom: z.string(),
-    primaryTalent: z.string(),
-    schoolName: z.string(),
-    academicYearLabel: z.string().optional(),
-    supervisors: z.array(supervisorSchema),
-  })
-  .strict();
-export const cvEditSchema = z
-  .object({ revision: z.number().int().min(0), content: cvSchema })
-  .strict();
-export const cvRevisionSchema = cvEditSchema.pick({ revision: true }).strict();
-export const cvBatchSchema = z.union([
-  z
-    .object({
-      studentIds: z.array(z.uuid()).min(1).max(20),
-      scope: listQuerySchema.pick({ academicYearId: true, status: true }).optional(),
-    })
-    .strict(),
-  z.object({ filters: listQuerySchema.omit({ page: true, pageSize: true }) }).strict(),
-]);
-export type LoginInput = z.infer<typeof loginSchema>;
-export type StudentInput = z.infer<typeof studentSchema>;
-export type RegistrationInput = z.infer<typeof registrationSchema>;
-export type WorkInput = z.infer<typeof workSchema>;
-export type SchoolInput = z.infer<typeof schoolSchema>;
-export type CvData = z.infer<typeof cvSchema>;
-export interface AdminIdentity {
-  id: string;
-  name: string;
-  email: string;
-}
-export interface SessionResponse {
-  admin: AdminIdentity | null;
-}
-export interface ApiErrorBody {
-  message: string;
-  code: string;
-}
-export interface AttachmentView {
-  id: string;
-  originalName: string;
-  mimeType: string;
-  sizeBytes: number;
-}
-export interface WorkView extends Omit<WorkInput, 'date'> {
-  id: string;
-  studentId: string;
-  date: string | null;
-  attachments: AttachmentView[];
-  createdAt: string;
-  updatedAt: string;
-}
-export interface StudentView extends StudentInput {
-  classroom: string;
-  primaryTalent: string;
-  additionalTalents: string[];
-  academicYearId: string;
-  academicYearLabel: string;
-  status: 'ACTIVE' | 'ARCHIVED';
-  archivedAt: string | null;
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  cv: { draft: CvData | null; approved: CvData | null; approvedAt: string | null } | null;
-  works: WorkView[];
-}
-export interface RegistrationView extends RegistrationInput {
-  classroom: string;
-  primaryTalent: string;
-  additionalTalents: string[];
-  id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  studentId: string | null;
-  createdAt: string;
-}
-export interface SchoolView extends SchoolInput {
-  hasLogo: boolean;
-  updatedAt: string;
-}
-export interface PageResult<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-  talents?: CatalogItem[];
-}
-export interface CvSource {
-  student: StudentView;
-  school: SchoolView;
-  supervisors: SchoolInput['supervisors'];
-  sourceUpdatedAt: string;
-}
-export interface CvState {
-  draft: CvData | null;
-  approved: CvData | null;
-  revision: number;
-  approvedAt: string | null;
-  draftUpdatedAt: string | null;
-  draftSnapshot: z.infer<typeof cvSnapshotSchema> | null;
-  approvedSnapshot: z.infer<typeof cvSnapshotSchema> | null;
-  draftStale: boolean;
-  approvedStale: boolean;
-  generating: boolean;
-  aiConfigured: boolean;
-}
-export const gradeLabels = {
-  FIRST: 'الأول الثانوي',
-  SECOND: 'الثاني الثانوي',
-  THIRD: 'الثالث الثانوي',
-} as const;
-export const FILE_LIMIT = 10 * 1024 * 1024;
-export const MAX_ATTACHMENTS = 6;
+// Stable public API: domain schemas and types live in focused modules.
+export { normalizeArabic, catalogNameKey } from './normalization.js';
+export { gradeLabels, FILE_LIMIT, MAX_ATTACHMENTS } from './constants.js';
+export {
+  gradeSchema,
+  dateSchema,
+  achievementSchema,
+  supervisorSchema,
+  phoneNumberSchema,
+} from './schemas/common.js';
+export {
+  loginSchema,
+  adminSetupSchema,
+  type LoginInput,
+  type AdminIdentity,
+  type SessionResponse,
+} from './schemas/auth.js';
+export {
+  academicYearLabelSchema,
+  rolloverSchema,
+  type AcademicYearView,
+  type YearSettings,
+  type DashboardView,
+} from './schemas/academic-years.js';
+export {
+  catalogSchema,
+  talentCatalogSchema,
+  type CatalogItem,
+  type CatalogView,
+} from './schemas/catalogs.js';
+export {
+  studentSchema,
+  storedStudentSchema,
+  namedStudentSchema,
+  studentSubmissionSchema,
+  type NamedStudentInput,
+  type StudentInput,
+  type StudentView,
+  listQuerySchema,
+} from './schemas/students.js';
+export {
+  registrationSchema,
+  namedRegistrationSchema,
+  registrationSubmissionSchema,
+  registrationApprovalSchema,
+  registrationQuerySchema,
+  type RegistrationInput,
+  type RegistrationView,
+} from './schemas/registrations.js';
+export {
+  safeUrlSchema,
+  workSchema,
+  type WorkInput,
+  type AttachmentView,
+  type WorkView,
+} from './schemas/works.js';
+export { schoolSchema, type SchoolInput, type SchoolView } from './schemas/school.js';
+export {
+  legacyCvSchema,
+  cvContentSchema,
+  cvSchema,
+  cvGenerationContentSchema,
+  cvHeaderLines,
+  cvSnapshotSchema,
+  cvEditSchema,
+  cvRevisionSchema,
+  cvApprovalSchema,
+  cvGenerateSchema,
+  cvBatchSchema,
+  type CvData,
+  type CvSource,
+  type CvState,
+} from './schemas/cv.js';
+export { idParamsSchema, type ApiErrorBody, type PageResult } from './schemas/http.js';

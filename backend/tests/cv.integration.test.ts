@@ -75,6 +75,7 @@ test(
     );
     const input = {
       name: `${prefix} أحمد`,
+      phoneNumber: '0501234567',
       grade: 'SECOND',
       classroomId: catalog.classroom.id,
       primaryTalentId: catalog.programming.id,
@@ -103,6 +104,7 @@ test(
           (
             await guest.post('/api/registrations', {
               name: input.name,
+              phoneNumber: input.phoneNumber,
               grade: input.grade,
               classroomId: input.classroomId,
               primaryTalentId: input.primaryTalentId,
@@ -155,7 +157,10 @@ test(
           ).statusCode,
           409,
         );
-        const accepted = await client.post(`/api/students/${id}/cv/approve`, { revision });
+        const accepted = await client.post(`/api/students/${id}/cv/approve`, {
+          revision,
+          studentReviewed: true,
+        });
         assert.equal(accepted.statusCode, 200, accepted.body);
         revision = accepted.json<CvState>().revision;
         approved = accepted.json<CvState>().approved;
@@ -170,7 +175,8 @@ test(
         );
         assert.equal((await get()).approvedStale, true);
         assert.equal(
-          (await client.post(`/api/students/${id}/cv/approve`, { revision })).statusCode,
+          (await client.post(`/api/students/${id}/cv/approve`, { revision, studentReviewed: true }))
+            .statusCode,
           409,
         );
         const response = await generate();
@@ -267,6 +273,7 @@ test(
         assert.equal(
           (
             await client.post(`/api/students/${second.id}/cv/approve`, {
+              studentReviewed: true,
               revision: edit.json<CvState>().revision,
             })
           ).statusCode,

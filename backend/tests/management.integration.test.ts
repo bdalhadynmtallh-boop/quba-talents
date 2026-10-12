@@ -70,6 +70,7 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
   assert.equal(login.statusCode, 200, login.body);
   const input = {
     name: `${prefix} أحمد`,
+    phoneNumber: '0501234567',
     grade: 'SECOND',
     classroomId: catalog.classroom.id,
     primaryTalentId: catalog.programming.id,
@@ -109,6 +110,7 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
     async () => {
       const response = await guest.post('/api/registrations', {
         name: input.name,
+        phoneNumber: input.phoneNumber,
         grade: input.grade,
         classroomId: input.classroomId,
         primaryTalentId: input.primaryTalentId,
@@ -149,6 +151,7 @@ test('Part 2 real database and file lifecycle', { skip: !url }, async (t) => {
       );
       const rejected = await guest.post('/api/registrations', {
         name: `${prefix} مرفوض`,
+        phoneNumber: input.phoneNumber,
         grade: 'FIRST',
         classroomId: catalog.secondClassroom.id,
         primaryTalentId: catalog.drawing.id,
@@ -518,6 +521,7 @@ test('Public registration flood limit', { skip: !url }, async (t) => {
       (
         await client.post('/api/registrations', {
           name: prefix,
+          phoneNumber: '0501234567',
           grade: 'FIRST',
           classroomId: catalog.classroom.id,
           primaryTalentId: catalog.programming.id,
@@ -530,6 +534,7 @@ test('Public registration flood limit', { skip: !url }, async (t) => {
     (
       await client.post('/api/registrations', {
         name: prefix,
+        phoneNumber: '0501234567',
         grade: 'FIRST',
         classroomId: catalog.classroom.id,
         primaryTalentId: catalog.programming.id,

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cvSchema, cvHeaderLines, cvGenerationContentSchema } from '@quba/shared';
+import { cvSchema, cvHeaderLines, cvGenerationContentSchema, cvSnapshotSchema } from '@quba/shared';
 import { printTemplate } from '../src/services/pdf/template.js';
 
 const old = {
@@ -17,7 +17,7 @@ const identity = {
   grade: 'SECOND' as const,
   classroom: 'أ',
   primaryTalent: 'الرسم',
-  schoolName: 'موهوبين ثانوية قباء',
+  schoolName: 'موهوبين مجمع ثانوية قباء',
   supervisors: [],
 };
 test('Stored CVs without suggestions remain readable and printable; empty edited suggestions are valid', () => {
@@ -29,6 +29,18 @@ test('Stored CVs without suggestions remain readable and printable; empty edited
   assert.ok(!html.includes('<h2>مهارات مقترحة للتطوير</h2>'));
   assert.ok(!html.includes('<h2>الأهداف المستقبلية</h2>'));
   assert.ok(cvSchema.safeParse({ ...old, suggestedSkills: [], futureGoals: [] }).success);
+  assert.ok(cvSnapshotSchema.safeParse(identity).success);
+  assert.ok(!html.includes('رقم الجوال:'));
+});
+
+test('CV printing includes the saved phone number and updated school header', () => {
+  const html = printTemplate(
+    [{ content: cvSchema.parse(old), identity: { ...identity, phoneNumber: '+966501234567' } }],
+    '',
+    '',
+  );
+  assert.ok(html.includes('مجمع ثانوية قباء'));
+  assert.ok(html.includes('رقم الجوال: <bdi dir="ltr">+966501234567</bdi>'));
 });
 test('New generation requires exactly three suggestions per section, and PDF escapes them in every student', () => {
   const data = {

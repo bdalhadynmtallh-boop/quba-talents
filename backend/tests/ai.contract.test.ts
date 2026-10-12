@@ -133,3 +133,19 @@ test('Missing key, provider failure and timeout report safe Arabic errors', asyn
     { code: 'AI_TIMEOUT' },
   );
 });
+test('Free notes cannot authorize invented acquired skills, awards or projects', async () => {
+  for (const invented of [
+    { ...content, skills: ['مهارة مختلقة'] },
+    { ...content, achievements: [{ title: 'جائزة مختلقة', date: null }] },
+    {
+      ...content,
+      projects: [{ title: 'مشروع مختلق', description: '', studentRole: '', date: null }],
+    },
+  ]) {
+    const ai = new QwenTextAi(env, async () => response(invented));
+    await assert.rejects(
+      ai.generate({ ...input, notes: 'ملاحظات عامة وليست دليلًا على اكتساب مهارات أو جوائز.' }),
+      { code: 'AI_INVALID' },
+    );
+  }
+});

@@ -37,6 +37,7 @@ test('Shared schemas reject extra personal data and malformed login input', () =
   assert.equal(loginSchema.safeParse({ email: 'bad', password: 'x' }).success, false);
   const form = {
     name: 'طالب تجريبي',
+    phoneNumber: '0501234567',
     grade: 'SECOND',
     classroomId: '00000000-0000-4000-8000-000000000001',
     primaryTalentId: '00000000-0000-4000-8000-000000000002',

@@ -8,6 +8,10 @@ import { TestClient } from './client.js';
 import { testDefaults } from './env.js';
 import {
   namedRegistrationSchema,
+  namedStudentSchema,
+  studentSchema,
+  registrationSchema,
+  storedStudentSchema,
   type StudentView,
   type RegistrationView,
   type PageResult,
@@ -16,6 +20,7 @@ import {
 test('Typed registration rejects duplicate and invalid talents', () => {
   const input = {
     name: 'طالب اختبار',
+    phoneNumber: '0501234567',
     grade: 'FIRST',
     classroom: '١ / ٣',
     primaryTalent: 'برمجة',
@@ -25,6 +30,32 @@ test('Typed registration rejects duplicate and invalid talents', () => {
   for (const additionalTalents of [['البرمجه'], ['الرسم', 'رسم'], Array(11).fill('الرسم'), ['ـَ']])
     assert.equal(namedRegistrationSchema.safeParse({ ...input, additionalTalents }).success, false);
   assert.equal(namedRegistrationSchema.safeParse({ ...input, classroom: 'ـَ' }).success, false);
+});
+
+test('All student submissions require a valid phone number and normalize Arabic digits', () => {
+  const identity = { name: 'طالب اختبار', grade: 'FIRST' };
+  const named = { ...identity, classroom: 'أ', primaryTalent: 'الرسم' };
+  const ids = {
+    ...identity,
+    classroomId: randomUUID(),
+    primaryTalentId: randomUUID(),
+  };
+  for (const [schema, input] of [
+    [namedStudentSchema, named],
+    [studentSchema, ids],
+    [namedRegistrationSchema, { ...named, description: 'أحب الرسم في المدرسة.' }],
+    [registrationSchema, { ...ids, description: 'أحب الرسم في المدرسة.' }],
+  ] as const) {
+    assert.equal(schema.safeParse(input).success, false);
+    for (const phoneNumber of ['', '   ', '123', '050abc4567', '+1234567890123456'])
+      assert.equal(schema.safeParse({ ...input, phoneNumber }).success, false);
+    assert.equal(schema.parse({ ...input, phoneNumber: '٠٥٠ ١٢٣-٤٥٦٧' }).phoneNumber, '0501234567');
+    assert.equal(
+      schema.parse({ ...input, phoneNumber: '+۹۶۶ (۵۰) ۱۲۳ ۴۵۶۷' }).phoneNumber,
+      '+966501234567',
+    );
+  }
+  assert.equal(storedStudentSchema.parse(ids).phoneNumber, '');
 });
 
 test(
@@ -69,12 +100,15 @@ test(
     });
     const submitted = {
       name: `طالب ${prefix}`,
+      phoneNumber: '٠٥٠ ١٢٣ ٤٥٦٧',
       grade: 'SECOND',
       classroom: `٢ / ٣ ${prefix}`,
       primaryTalent: `الخط العربي ${prefix}`,
       additionalTalents: [`الإلقاء ${prefix}`],
       description: 'أحب كتابة الخط العربي والمشاركة في الإلقاء.',
     };
+    const missingPhone = { ...submitted, phoneNumber: undefined };
+    assert.equal((await guest.post('/api/registrations', missingPhone)).statusCode, 400);
     const response = await guest.post('/api/registrations', submitted);
     assert.equal(response.statusCode, 201, response.body);
     assert.equal((await guest.request({ url: '/api/registrations' })).statusCode, 401);
@@ -93,6 +127,7 @@ test(
     >();
     const registration = list.items.find((entry) => entry.name === submitted.name)!;
     assert.equal(registration.primaryTalent, submitted.primaryTalent);
+    assert.equal(registration.phoneNumber, '0501234567');
     assert.deepEqual(registration.additionalTalents, submitted.additionalTalents);
     const input = {
       ...submitted,
@@ -109,16 +144,19 @@ test(
       await client.request({ url: `/api/students/${studentId}` })
     ).json<StudentView>();
     assert.equal(student.classroom, submitted.classroom);
+    assert.equal(student.phoneNumber, '0501234567');
     assert.equal(student.primaryTalentId, registration.primaryTalentId);
     assert.deepEqual(student.additionalTalents, submitted.additionalTalents);
     const edit = await client.mutate('PUT', `/api/students/${studentId}`, {
       ...input,
+      phoneNumber: '+966501234568',
       classroom: `٣ / ٢ ${prefix}`,
       primaryTalent: `التصوير ${prefix}`,
       additionalTalents: [],
     });
     assert.equal(edit.statusCode, 200, edit.body);
     assert.equal(edit.json<StudentView>().primaryTalent, `التصوير ${prefix}`);
+    assert.equal(edit.json<StudentView>().phoneNumber, '+966501234568');
     assert.deepEqual(edit.json<StudentView>().additionalTalents, []);
     const created = await client.post('/api/students', {
       ...input,
@@ -129,6 +167,7 @@ test(
     // Existing ID-based clients continue to work during deployment.
     const oldClient = await client.post('/api/students', {
       name: `عميل قديم ${prefix}`,
+      phoneNumber: '0501234567',
       grade: 'FIRST',
       classroomId: edit.json<StudentView>().classroomId,
       primaryTalentId: edit.json<StudentView>().primaryTalentId,

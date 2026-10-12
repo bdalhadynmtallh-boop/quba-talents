@@ -13,6 +13,7 @@
   --muted: #5c7294;
   --border: #dfe8f5;
   --primary: #1162ee;
+  --primary-text: #1162ee;
   --primary-hover: #074ed1;
   --pale-blue: #e9f3ff;
   --shadow: 0 14px 45px #193e7910;
@@ -26,6 +27,7 @@
   --muted: #adbed7;
   --border: #2a3d58;
   --primary: #1f64d6;
+  --primary-text: #8bbbff;
   --primary-hover: #1758c4;
   --pale-blue: #142d51;
   --shadow: 0 14px 45px #0002;
@@ -148,7 +150,7 @@ select:focus-visible {
   white-space: nowrap;
 }
 .brand-star {
-  color: var(--primary);
+  color: var(--primary-text);
   fill: var(--pale-blue);
   stroke-width: 1.8;
 }
@@ -166,7 +168,7 @@ select:focus-visible {
   position: relative;
 }
 .main-nav > a.active {
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 600;
 }
 .main-nav > a.active:after {
@@ -300,7 +302,7 @@ select:focus-visible {
   gap: 9px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--primary-text);
   background: var(--pale-blue);
   border-radius: 50px;
   padding: 7px 16px;
@@ -333,7 +335,7 @@ select:focus-visible {
   letter-spacing: -2px;
 }
 .hero h1 span {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .hero-description {
   font-size: 19px;
@@ -500,7 +502,7 @@ select:focus-visible {
   margin-block: 19px;
 }
 .art-section > svg {
-  color: var(--primary);
+  color: var(--primary-text);
   margin-top: 4px;
 }
 .art-section > div {
@@ -612,7 +614,7 @@ select:focus-visible {
   width: 56px;
   height: 56px;
   background: var(--pale-blue);
-  color: var(--primary);
+  color: var(--primary-text);
   border-radius: 13px;
   margin-bottom: 17px;
 }
@@ -647,7 +649,7 @@ select:focus-visible {
   font-size: 13px;
 }
 .footer-brand svg {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .site-footer p {
   font-size: 13px;
@@ -792,7 +794,7 @@ main {
 }
 .talent-tag.blue {
   background: var(--pale-blue);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .talent-tag.gold {
   background: #fff2d7;
@@ -830,7 +832,7 @@ main {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--primary);
+  color: var(--primary-text);
   background: var(--pale-blue);
 }
 .spin {
@@ -888,7 +890,7 @@ main {
   border-bottom: 3px solid transparent;
 }
 .profile-tabs nav button[aria-current] {
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 600;
   border-color: var(--primary);
 }
@@ -935,7 +937,7 @@ main {
   border-bottom: 1px solid var(--border);
 }
 .cv-school svg {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .cv-paper header {
   text-align: center;
@@ -960,7 +962,7 @@ main {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 15px;
   padding-bottom: 9px;
   border-bottom: 1px solid var(--border);
@@ -1629,7 +1631,7 @@ fieldset {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 14px;
   margin-block: 12px;
 }
@@ -1803,7 +1805,7 @@ fieldset {
 }
 .dashboard-card strong {
   font-size: 1.7rem;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .dashboard-card:hover {
   border-color: var(--primary);

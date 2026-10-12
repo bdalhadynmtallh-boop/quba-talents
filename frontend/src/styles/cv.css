@@ -183,7 +183,7 @@
 .completion-title strong {
   margin-inline-start: auto;
   font-size: 18px;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .profile-completion progress {
   width: 100%;

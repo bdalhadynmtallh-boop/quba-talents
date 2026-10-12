@@ -237,7 +237,7 @@
   right: -5px;
   top: 72px;
   transform: rotate(-7deg);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .float-art {
   left: -4px;
@@ -322,7 +322,7 @@
   padding: 13px;
   border-radius: 14px;
   background: var(--pale-blue);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .tone-purple .talent-icon {
   background: var(--purple-soft);

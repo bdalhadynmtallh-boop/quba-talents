@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, errorMessage } from './api';
-export function useResource<T>(url: string) {
+import { schoolChangeEvent, resourceAffected, type ChangeScope } from './events';
+export function useResource<T>(url: string, refreshOnSchoolChange = true) {
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<{
     url: string;
@@ -23,6 +24,15 @@ export function useResource<T>(url: string) {
   }, [url, revision]);
   const current = state.url === url && state.revision === revision;
   const reload = useCallback(() => setRevision((value) => value + 1), []);
+  useEffect(() => {
+    if (!refreshOnSchoolChange) return;
+    const changed = (event: Event) => {
+      const scope = (event as CustomEvent<{ scope: ChangeScope }>).detail?.scope ?? 'all';
+      if (resourceAffected(url, scope)) reload();
+    };
+    window.addEventListener(schoolChangeEvent, changed);
+    return () => window.removeEventListener(schoolChangeEvent, changed);
+  }, [url, reload, refreshOnSchoolChange]);
   return {
     previousData: state.data,
     data: current ? state.data : null,

@@ -45,6 +45,11 @@ export function CvPaper({
           {gradeLabels[identity.grade]} · الفصل {identity.classroom}
         </p>
         <p>الموهبة الرئيسية: {identity.primaryTalent}</p>
+        {identity.phoneNumber && (
+          <p>
+            رقم الجوال: <bdi dir="ltr">{identity.phoneNumber}</bdi>
+          </p>
+        )}
         {identity.academicYearLabel && <p>السنة الدراسية: {identity.academicYearLabel}</p>}
       </header>
       {content.summary && (

@@ -3,7 +3,7 @@ import type { YearSettings } from '@quba/shared';
 import { api, errorMessage } from '../../lib/api';
 import { useResource } from '../../lib/useResource';
 import { ResourceState } from '../../components/ui/ResourceState';
-export const notifySchoolChange = () => window.dispatchEvent(new Event('school-data-changed'));
+import { notifySchoolChange } from '../../lib/events';
 export function AcademicYearSettings() {
   const resource = useResource<YearSettings>('/academic-years');
   const [confirm, setConfirm] = useState(false),
@@ -37,7 +37,7 @@ export function AcademicYearSettings() {
       } else
         await api('/academic-years/current', { method: 'PUT', body: JSON.stringify({ label }) });
       resource.reload();
-      notifySchoolChange();
+      notifySchoolChange('academic-years');
     } catch (e) {
       setError(errorMessage(e));
     } finally {

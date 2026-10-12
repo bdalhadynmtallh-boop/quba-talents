@@ -89,7 +89,7 @@ export function HomePage() {
       <section className="hero container">
         <div className="hero-copy">
           <span className="eyebrow">
-            <Sparkles size={16} /> مساحة الإبداع في ثانوية قباء
+            <Sparkles size={16} /> مساحة الإبداع في مجمع ثانوية قباء
           </span>
           <h1>
             شغفك اليوم.
@@ -137,7 +137,7 @@ export function HomePage() {
                 <UserRound size={37} />
               </span>
               <div>
-                <small>ثانوية قباء</small>
+                <small>مجمع ثانوية قباء</small>
                 <strong>هنا تبدأ حكايتك</strong>
                 <span>موهبة · مهارات · أعمال</span>
               </div>

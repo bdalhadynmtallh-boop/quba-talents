@@ -6,11 +6,21 @@ export function ConfirmDialog({
   message,
   onConfirm,
   onClose,
+  danger = false,
+  confirmLabel = 'تأكيد',
+  busyLabel = 'جارٍ تنفيذ العملية…',
+  children,
+  disabled = false,
 }: {
   title: string;
   message: string;
   onConfirm: () => Promise<void>;
   onClose: () => void;
+  danger?: boolean;
+  confirmLabel?: string;
+  busyLabel?: string;
+  children?: import('react').ReactNode;
+  disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
@@ -38,14 +48,19 @@ export function ConfirmDialog({
       }}
     >
       <p>{message}</p>
+      {children}
       {error && (
         <p role="alert" className="inline-error">
           {error}
         </p>
       )}
       <div className="dialog-actions">
-        <button className="button danger" disabled={busy} onClick={() => void confirm()}>
-          {busy ? 'جارٍ الحذف…' : 'تأكيد'}
+        <button
+          className={`button${danger ? ' danger' : ''}`}
+          disabled={busy || disabled}
+          onClick={() => void confirm()}
+        >
+          {busy ? busyLabel : confirmLabel}
         </button>
         <button className="button button-secondary" disabled={busy} onClick={onClose}>
           إلغاء

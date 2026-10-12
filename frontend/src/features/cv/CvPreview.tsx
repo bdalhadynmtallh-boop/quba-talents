@@ -8,6 +8,7 @@ import { StatusPanel } from '../../components/ui/StatusPanel';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { CvEditor } from './CvEditor';
 import { CvPaper } from './CvPaper';
+import { AiPreviewDialog } from './AiPreviewDialog';
 export function CvPreview({ studentId }: { studentId: string }) {
   const source = useResource<CvSource>(`/students/${studentId}/cv/source`),
     resource = useResource<CvState>(`/students/${studentId}/cv`);
@@ -17,6 +18,8 @@ export function CvPreview({ studentId }: { studentId: string }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const pending = useRef(false);
+  const [previewingAi, setPreviewingAi] = useState(false),
+    [studentReviewed, setStudentReviewed] = useState(false);
   if (source.loading || source.error) return <ResourceState {...source} onRetry={source.reload} />;
   if (resource.loading || resource.error)
     return <ResourceState {...resource} onRetry={resource.reload} />;
@@ -30,7 +33,7 @@ export function CvPreview({ studentId }: { studentId: string }) {
   const content = view === 'approved' ? state.approved : (state.draft ?? state.approved);
   const identity =
     view === 'approved' ? state.approvedSnapshot : (state.draftSnapshot ?? state.approvedSnapshot);
-  async function generate() {
+  async function generate(sourceHash: string) {
     if (pending.current) return;
     pending.current = true;
     setBusy(true);
@@ -38,7 +41,7 @@ export function CvPreview({ studentId }: { studentId: string }) {
     try {
       await api(`/students/${studentId}/cv/generate`, {
         method: 'POST',
-        body: JSON.stringify({ revision: state.revision }),
+        body: JSON.stringify({ revision: state.revision, sourceHash }),
       });
       setView('draft');
       resource.reload();
@@ -77,7 +80,7 @@ export function CvPreview({ studentId }: { studentId: string }) {
           <button
             className="button"
             disabled={busy || state.generating || !state.aiConfigured}
-            onClick={() => void generate()}
+            onClick={() => setPreviewingAi(true)}
           >
             <Sparkles size={17} />
             {busy
@@ -100,7 +103,10 @@ export function CvPreview({ studentId }: { studentId: string }) {
             <button
               className="button button-secondary"
               disabled={busy || state.draftStale}
-              onClick={() => setApproving(true)}
+              onClick={() => {
+                setStudentReviewed(false);
+                setApproving(true);
+              }}
             >
               <Check size={17} />
               اعتماد وحفظ
@@ -126,6 +132,18 @@ export function CvPreview({ studentId }: { studentId: string }) {
           <button className="button button-secondary" onClick={resource.reload}>
             تحديث الحالة
           </button>
+        </p>
+      )}
+      {state.legacyApproval && (
+        <p className="notice">
+          سيرة معتمدة سابقًا؛ لا يوجد سجل مراجعة تاريخي. تبقى قابلة للعرض والتصدير.
+        </p>
+      )}
+      {state.latestReview && (
+        <p className="muted">
+          آخر اعتماد: {state.latestReview.reviewerName} ·{' '}
+          {new Date(state.latestReview.approvedAt).toLocaleDateString('ar-SA')} · نسخة المسودة{' '}
+          {state.latestReview.revision} بعد مراجعة الطالب بإشراف المدرسة.
         </p>
       )}
       {(state.approvedStale || state.draftStale) && (
@@ -198,15 +216,32 @@ export function CvPreview({ studentId }: { studentId: string }) {
         <ConfirmDialog
           title="اعتماد السيرة"
           message="راجعت النص والإنجازات والمشرفين. هل تريد اعتماد هذه المسودة وحفظها كسيرة رسمية؟"
+          disabled={!studentReviewed}
           onClose={() => setApproving(false)}
           onConfirm={async () => {
             await api(`/students/${studentId}/cv/approve`, {
               method: 'POST',
-              body: JSON.stringify({ revision: state.revision }),
+              body: JSON.stringify({ revision: state.revision, studentReviewed: true }),
             });
             setView('approved');
             resource.reload();
           }}
+        >
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={studentReviewed}
+              onChange={(e) => setStudentReviewed(e.target.checked)}
+            />
+            راجع الطالب هذه النسخة معي، وتحققت من النبذة والحقائق الموثقة والاقتراحات قبل الاعتماد.
+          </label>
+        </ConfirmDialog>
+      )}
+      {previewingAi && (
+        <AiPreviewDialog
+          studentId={studentId}
+          onClose={() => setPreviewingAi(false)}
+          onConfirm={generate}
         />
       )}
     </>

@@ -29,9 +29,9 @@ export function Layout() {
       </a>
       <header className="site-header">
         <div className="nav-shell">
-          <Link className="brand" to="/" aria-label="موهوبين ثانوية قباء — الرئيسية">
+          <Link className="brand" to="/" aria-label="موهوبين مجمع ثانوية قباء — الرئيسية">
             <Star className="brand-star" size={34} />
-            <span>موهوبين ثانوية قباء</span>
+            <span>موهوبين مجمع ثانوية قباء</span>
           </Link>
           <nav className="main-nav" aria-label="التنقل الرئيسي">
             <NavLink to="/" end>
@@ -44,7 +44,7 @@ export function Layout() {
             <span className="nav-separator" />
             {auth.admin ? (
               <details className="account-menu">
-                <summary>
+                <summary aria-label={`حساب الإدارة: ${auth.admin.name}`}>
                   <span className="avatar-small">
                     <UserRound size={19} />
                   </span>
@@ -63,7 +63,7 @@ export function Layout() {
                 </div>
               </details>
             ) : (
-              <Link className="account-link" to="/login">
+              <Link className="account-link" to="/login" aria-label="تسجيل دخول الإدارة">
                 <span className="avatar-small">
                   <UserRound size={19} />
                 </span>
@@ -84,10 +84,10 @@ export function Layout() {
       <footer className="site-footer">
         <Link className="footer-brand" to="/">
           <Star size={22} />
-          <strong>موهوبين ثانوية قباء</strong>
+          <strong>موهوبين مجمع ثانوية قباء</strong>
         </Link>
         <p>لكل موهبة حكاية تستحق أن تُروى.</p>
-        <small>جميع الحقوق محفوظة © {new Date().getFullYear()} ثانوية قباء</small>
+        <small>جميع الحقوق محفوظة © {new Date().getFullYear()} مجمع ثانوية قباء</small>
       </footer>
       {settings && <SchoolDialog onClose={() => setSettings(false)} />}
     </>

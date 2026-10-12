@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { AdminIdentity, LoginInput, SessionResponse } from '@quba/shared';
 import { api } from '../../lib/api';
+import { sessionExpiredEvent } from '../../lib/events';
 type AuthState = {
   admin: AdminIdentity | null;
   status: 'loading' | 'ready' | 'error';
@@ -24,6 +25,11 @@ const failed = (error: unknown): AuthState => ({
 });
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ admin: null, status: 'loading', error: '' });
+  useEffect(() => {
+    const expired = () => setState({ admin: null, status: 'ready', error: '' });
+    window.addEventListener(sessionExpiredEvent, expired);
+    return () => window.removeEventListener(sessionExpiredEvent, expired);
+  }, []);
   const refresh = useCallback(async () => {
     try {
       setState(ready(await api<SessionResponse>('/auth/session')));

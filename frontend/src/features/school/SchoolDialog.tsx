@@ -4,6 +4,7 @@ import { Modal } from '../../components/ui/Modal';
 import { ResourceState } from '../../components/ui/ResourceState';
 import { api, errorMessage } from '../../lib/api';
 import { useResource } from '../../lib/useResource';
+import { notifySchoolChange } from '../../lib/events';
 import { SupervisorFields } from './SupervisorFields';
 import { AcademicYearSettings } from './AcademicYearSettings';
 import { CatalogSettings } from './CatalogSettings';
@@ -39,7 +40,9 @@ function SchoolForm({ initial, onSaved }: { initial: SchoolView; onSaved: () => 
         await api('/school/logo', { method: 'POST', body: upload });
       } else if (form.get('removeLogo')) await api('/school/logo', { method: 'DELETE' });
       onSaved();
+      notifySchoolChange('school');
     } catch (error) {
+      if (saved) notifySchoolChange('school');
       setError((saved ? 'حُفظت الإعدادات، لكن لم يكتمل تعديل الشعار. ' : '') + errorMessage(error));
     } finally {
       submitting.current = false;
@@ -88,7 +91,7 @@ function SchoolForm({ initial, onSaved }: { initial: SchoolView; onSaved: () => 
   );
 }
 export function SchoolDialog({ onClose }: { onClose: () => void }) {
-  const resource = useResource<SchoolView>('/school');
+  const resource = useResource<SchoolView>('/school', false);
   return (
     <Modal title="إعدادات المدرسة" onClose={onClose}>
       {resource.loading || resource.error ? (

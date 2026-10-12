@@ -3,7 +3,7 @@ import type { CatalogItem, CatalogView } from '@quba/shared';
 import { api, errorMessage } from '../../lib/api';
 import { useResource } from '../../lib/useResource';
 import { ResourceState } from '../../components/ui/ResourceState';
-import { notifySchoolChange } from './AcademicYearSettings';
+import { notifySchoolChange } from '../../lib/events';
 function ItemForm({
   kind,
   item,
@@ -34,7 +34,7 @@ function ItemForm({
       });
       if (!item) form.reset();
       onSaved();
-      notifySchoolChange();
+      notifySchoolChange('catalogs');
     } catch (e) {
       setError(errorMessage(e));
     } finally {

@@ -1,8 +1,10 @@
 import type { ApiErrorBody } from '@quba/shared';
+import { sessionExpiredEvent } from './events';
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly code?: string,
   ) {
     super(message);
   }
@@ -36,10 +38,12 @@ export async function apiResponse(path: string, options: RequestInit = {}): Prom
     throw new ApiError(0, 'تعذر الاتصال بالخادم. تحقق من تشغيله ثم حاول مجددًا.');
   }
   if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login')
+      window.dispatchEvent(new Event(sessionExpiredEvent));
     const error = (await response
       .json()
       .catch(() => ({ message: 'تعذر إكمال الطلب.' }))) as Partial<ApiErrorBody>;
-    throw new ApiError(response.status, error.message ?? 'تعذر إكمال الطلب.');
+    throw new ApiError(response.status, error.message ?? 'تعذر إكمال الطلب.', error.code);
   }
   return response;
 }

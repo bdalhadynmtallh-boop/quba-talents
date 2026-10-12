@@ -54,7 +54,7 @@ test('Home is responsive, truthful, accessible and respects reduced motion in bo
         .toBe(true);
       await expect(page.locator('.talents-section')).toHaveCSS('opacity', '1');
       await page.screenshot({
-        path: resolve(`backend/docs/screenshots/home-${width}-${theme}.png`),
+        path: resolve(`backend/test-results/screenshots/home-${width}-${theme}.png`),
         fullPage: true,
         animations: 'disabled',
       });
@@ -67,4 +67,42 @@ test('Home is responsive, truthful, accessible and respects reduced motion in bo
   await page.getByRole('link', { name: 'تسجيل الموهبة', exact: true }).last().click();
   await expect(page).toHaveURL(/\/register$/);
   expect(errors).toEqual([]);
+});
+
+test('Registration requires a phone number and the new name fits mobile screens', async ({
+  page,
+}) => {
+  let submitted: { phoneNumber: string } | undefined;
+  await page.route('**/api/auth/session', (route) => route.fulfill({ json: { admin: null } }));
+  await page.route('**/api/auth/csrf', (route) => route.fulfill({ json: { token: 'test-token' } }));
+  await page.route('**/api/registrations', async (route) => {
+    submitted = route.request().postDataJSON() as { phoneNumber: string };
+    await route.fulfill({ status: 201, json: { message: 'تم إرسال الطلب.' } });
+  });
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/register');
+    await expect(page).toHaveTitle('موهوبين مجمع ثانوية قباء');
+    await expect(page.locator('.brand')).toContainText('موهوبين مجمع ثانوية قباء');
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      .toBe(true);
+  }
+  const phone = page.getByLabel('رقم الجوال', { exact: true });
+  await page.getByLabel('اسم الطالب', { exact: true }).fill('طالب تجريبي');
+  await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
+  await page.getByLabel('الفصل', { exact: true }).fill('أ');
+  await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('الرسم');
+  await page.getByLabel('وصف مختصر للموهبة').fill('أحب الرسم والمشاركة في معرض المدرسة.');
+  await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
+  expect(submitted).toBeUndefined();
+  expect(await phone.evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true);
+  await phone.fill('123');
+  await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
+  await expect(page.getByRole('alert')).toContainText('أدخل رقم جوال صحيحًا');
+  expect(submitted).toBeUndefined();
+  await phone.fill('٠٥٠ ١٢٣-٤٥٦٧');
+  await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
+  await expect(page.getByRole('heading', { name: 'وصلت موهبتك إلينا!' })).toBeVisible();
+  expect(submitted?.phoneNumber).toBe('0501234567');
 });

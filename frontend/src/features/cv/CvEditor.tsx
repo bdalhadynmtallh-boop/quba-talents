@@ -326,6 +326,7 @@ export function CvEditor({
             source={source}
             identity={cvSnapshotSchema.parse({
               name: source.student.name,
+              phoneNumber: source.student.phoneNumber,
               grade: source.student.grade,
               classroom: source.student.classroom,
               primaryTalent: source.student.primaryTalent,

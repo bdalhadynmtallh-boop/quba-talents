@@ -3,7 +3,15 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 import hooks from 'eslint-plugin-react-hooks';
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/generated/**', '**/test-results/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/generated/**',
+      '**/test-results/**',
+      '**/.data/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

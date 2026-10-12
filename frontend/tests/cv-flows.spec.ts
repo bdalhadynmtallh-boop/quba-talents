@@ -1,10 +1,10 @@
+import { requireTestDatabaseUrl } from '../../backend/tests/isolation.js';
 import { testCatalog } from '../../backend/tests/catalog.js';
 import { test, expect } from '@playwright/test';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { readFile, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
-import dotenv from 'dotenv';
 import sharp from 'sharp';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../backend/src/app.js';
@@ -25,11 +25,7 @@ let apiEnvironment: Parameters<typeof buildApp>[0];
 test.beforeAll(async () => {
   if (process.env.BROWSER_TESTS_ALLOW_DB_WRITE !== 'yes')
     throw new Error('Browser database writes must be explicitly enabled.');
-  const config = dotenv.parse(await readFile('backend/.env'));
-  const url = new URL(process.env.TEST_DATABASE_URL ?? config.DATABASE_URL!);
-  if (!process.env.TEST_DATABASE_URL) url.pathname = '/quba_talents_test';
-  if (!url.pathname.endsWith('_test'))
-    throw new Error('Only a dedicated test database is permitted.');
+  const url = new URL(requireTestDatabaseUrl(process.env.TEST_DATABASE_URL));
   db = createDatabase(url.href);
   await testCatalog(db);
   adminId = (
@@ -86,9 +82,100 @@ test.afterAll(async () => {
   if (!storageRoot.startsWith(resolve('backend/.data') + sep)) throw new Error('Unsafe cleanup');
   await rm(storageRoot, { recursive: true, force: true });
 });
+
+test('Required phone persists through registration, approval, editing and approved CV', async ({
+  page,
+}) => {
+  const name = `${prefix} جوال`;
+  await page.goto('/register');
+  await page.getByLabel('اسم الطالب', { exact: true }).fill(name);
+  await page.getByLabel('رقم الجوال', { exact: true }).fill('٠٥٠ ١٢٣ ٤٥٦٧');
+  await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
+  await page.getByLabel('الفصل', { exact: true }).fill('أ');
+  await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('البرمجة');
+  await page.getByLabel('وصف مختصر للموهبة').fill('أحب البرمجة وتطوير المواقع التعليمية.');
+  await page.getByRole('button', { name: 'إرسال طلب التسجيل' }).click();
+  await expect(page.getByRole('heading', { name: 'وصلت موهبتك إلينا!' })).toBeVisible();
+  await page.goto('/login');
+  await page.getByLabel('البريد الإلكتروني').fill(email);
+  await page.getByLabel('كلمة المرور').fill(password);
+  await page.getByRole('button', { name: 'تسجيل الدخول', exact: true }).click();
+  await page.getByRole('button', { name: 'طلبات التسجيل', exact: true }).click();
+  await page
+    .locator('.registration-card')
+    .filter({ hasText: name })
+    .getByRole('button', { name: 'مراجعة وقبول' })
+    .click();
+  await expect(page.getByLabel('رقم الجوال', { exact: true })).toHaveValue('0501234567');
+  await page.getByRole('button', { name: 'قبول الطلب وإضافة الطالب' }).click();
+  await page
+    .getByRole('dialog', { name: 'طلبات التسجيل' })
+    .getByRole('button', { name: 'إغلاق النافذة' })
+    .click();
+  await page
+    .locator('.student-card')
+    .filter({ hasText: name })
+    .getByRole('link', { name: 'عرض ملف الطالب' })
+    .click();
+  await expect(page.locator('.student-summary')).toContainText('0501234567');
+  await page.getByRole('button', { name: 'تعديل الطالب', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'تعديل الطالب' });
+  await edit.getByLabel('رقم الجوال', { exact: true }).fill('');
+  await edit.getByRole('button', { name: 'حفظ الطالب' }).click();
+  await expect(edit).toBeVisible();
+  await edit.getByLabel('رقم الجوال', { exact: true }).fill('+966 50 123 4568');
+  await edit.getByRole('button', { name: 'حفظ الطالب' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(page.locator('.student-summary')).toContainText('+966501234568');
+  await page.getByRole('button', { name: 'إنشاء السيرة بالذكاء الاصطناعي', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'مراجعة البيانات قبل الصياغة' })
+    .getByRole('checkbox')
+    .check();
+  await page.getByRole('button', { name: 'بدء الصياغة', exact: true }).click();
+  await expect(page.locator('.cv-paper')).toContainText('+966501234568');
+  await expect(page.locator('.cv-official-header')).toContainText('مجمع ثانوية قباء');
+  await page.getByRole('button', { name: 'اعتماد وحفظ' }).click();
+  await page.getByRole('dialog', { name: 'اعتماد السيرة' }).getByRole('checkbox').check();
+  await page
+    .getByRole('dialog', { name: 'اعتماد السيرة' })
+    .getByRole('button', { name: 'تأكيد', exact: true })
+    .click();
+  await expect(page.getByRole('button', { name: 'تنزيل PDF المعتمد' })).toBeVisible();
+  const id = new URL(page.url()).pathname.split('/').at(-1)!;
+  const saved = await db.student.findUniqueOrThrow({ where: { id }, include: { cv: true } });
+  expect(saved.phoneNumber).toBe('+966501234568');
+  expect(saved.cv?.approvedSnapshot).toMatchObject({ phoneNumber: '+966501234568' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
+  await page.screenshot({ path: test.info().outputPath('phone-profile-390.png'), fullPage: true });
+});
 test.beforeEach(async () => {
   // Each isolated journey gets a fresh rate-limit window; production limits stay unchanged.
   await app.close();
+  // School-wide settings are owned by this dedicated test database as well.
+  await db.supervisor.deleteMany({ where: { schoolId: 'school' } });
+  // Each journey owns its records; a previous journey must not affect selectors,
+  // dashboard counts or filtered PDF exports in the next one.
+  const previous = await db.student.findMany({
+    where: { name: { startsWith: prefix } },
+    include: { works: { include: { attachments: true } } },
+  });
+  await db.$transaction(async (tx) => {
+    const keys = previous.flatMap((student) =>
+      student.works.flatMap((work) => work.attachments.map((file) => file.storageKey)),
+    );
+    if (keys.length)
+      await tx.storageDeletion.createMany({
+        data: keys.map((storageKey) => ({ storageKey })),
+        skipDuplicates: true,
+      });
+    await tx.registrationRequest.deleteMany({ where: { name: { startsWith: prefix } } });
+    await tx.student.deleteMany({ where: { name: { startsWith: prefix } } });
+  });
+  await app.storage.maintain(db);
   app = await buildApp(apiEnvironment, { ai: fake });
   await app.listen({ host: '127.0.0.1', port: 3002 });
 });
@@ -103,6 +190,7 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
   });
   await page.goto('/register');
   await page.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} أحمد`);
+  await page.getByLabel('رقم الجوال', { exact: true }).fill('0501234567');
   await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
   await page.getByLabel('الفصل', { exact: true }).fill(`${prefix} أ`);
   await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('البرمجة');
@@ -160,12 +248,19 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
       exact: true,
     })
     .click();
+  await page
+    .getByRole('dialog', { name: 'مراجعة البيانات قبل الصياغة' })
+    .getByRole('checkbox')
+    .check();
+  await page.getByRole('button', { name: 'بدء الصياغة', exact: true }).click();
   await expect(page.locator('.cv-paper')).toContainText('المراجعة التفاعلية');
   await expect(page.locator('.cv-official-header')).toContainText(
     'الإدارة العامة للتعليم بمنطقة المدينة المنورة',
   );
   await expect(page.locator('.cv-development')).toContainText('فهم المتغيرات');
   await expect(page.locator('.cv-paper')).toContainText('الأهداف المستقبلية');
+  await expect(page.locator('.cv-paper')).toContainText('0501234567');
+  await expect(page.locator('.cv-official-header')).toContainText('مجمع ثانوية قباء');
   await expect(page.getByRole('progressbar', { name: 'اكتمال بيانات الملف' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'شعار وزارة التعليم', exact: true })).toBeVisible();
   expect(
@@ -191,14 +286,14 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
     el.scrollTop = 0;
   });
   await editor.screenshot({
-    path: resolve('backend/docs/screenshots/cv-editor-desktop-light.png'),
+    path: resolve('backend/test-results/screenshots/cv-editor-desktop-light.png'),
     animations: 'disabled',
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => editor.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   await editor.getByRole('button', { name: 'عرض المعاينة المباشرة', exact: true }).click();
   await page.screenshot({
-    path: resolve('backend/docs/screenshots/cv-editor-mobile-light.png'),
+    path: resolve('backend/test-results/screenshots/cv-editor-mobile-light.png'),
     animations: 'disabled',
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -208,6 +303,7 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
   await editor.getByRole('button', { name: 'حفظ المسودة' }).click();
   await expect(editor).toHaveCount(0);
   await page.getByRole('button', { name: 'اعتماد وحفظ' }).click();
+  await page.getByRole('dialog', { name: 'اعتماد السيرة' }).getByRole('checkbox').check();
   await page
     .getByRole('dialog', { name: 'اعتماد السيرة' })
     .getByRole('button', { name: 'تأكيد', exact: true })
@@ -219,7 +315,7 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
   await expect(page.locator('.cv-supervisors')).toHaveCount(0);
   await page.getByRole('button', { name: 'تفعيل الوضع الليلي' }).click();
   await page.screenshot({
-    path: resolve('backend/docs/screenshots/cv-approved-desktop-dark.png'),
+    path: resolve('backend/test-results/screenshots/cv-approved-desktop-dark.png'),
     animations: 'disabled',
     fullPage: true,
   });
@@ -229,6 +325,11 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
   await expect.poll(async () => (await download).failure()).toBe(null);
   expect(fake.calls).toBe(calls);
   await page.getByRole('button', { name: 'إعادة الصياغة', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'مراجعة البيانات قبل الصياغة' })
+    .getByRole('checkbox')
+    .check();
+  await page.getByRole('button', { name: 'بدء الصياغة', exact: true }).click();
   await expect(page.getByRole('button', { name: 'معاينة المعتمدة' })).toBeVisible();
   await page.getByRole('button', { name: 'معاينة المعتمدة' }).click();
   await expect(page.locator('.cv-paper')).toContainText('طالب مهتم بالبرمجة شارك');
@@ -238,7 +339,7 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
   await page.screenshot({
-    path: resolve('backend/docs/screenshots/cv-approved-mobile-light.png'),
+    path: resolve('backend/test-results/screenshots/cv-approved-mobile-light.png'),
     animations: 'disabled',
     fullPage: true,
   });
@@ -275,6 +376,7 @@ test('Full CV journey with test-only AI and real API/PostgreSQL/uploads/Chromium
   await expect(page.locator('.cv-paper')).toBeVisible();
   await expect(page.locator('.cv-development')).toHaveCount(0);
   await page.getByRole('button', { name: 'اعتماد وحفظ' }).click();
+  await page.getByRole('dialog', { name: 'اعتماد السيرة' }).getByRole('checkbox').check();
   await page
     .getByRole('dialog', { name: 'اعتماد السيرة' })
     .getByRole('button', { name: 'تأكيد', exact: true })
@@ -331,6 +433,7 @@ test('Admin settings, fixed lists, Arabic search, yearly dashboard, rollover and
     await page.getByRole('button', { name: 'إضافة طالب', exact: true }).click();
     const form = page.getByRole('dialog', { name: 'إضافة طالب' });
     await form.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} ${name} سنة`);
+    await form.getByLabel('رقم الجوال', { exact: true }).fill('0501234567');
     await form.getByLabel('الصف', { exact: true }).selectOption(grade!);
     await form.getByLabel('الفصل', { exact: true }).fill(className);
     await form.getByLabel('الموهبة الرئيسية', { exact: true }).fill(talentName);
@@ -360,12 +463,12 @@ test('Admin settings, fixed lists, Arabic search, yearly dashboard, rollover and
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
   await page.screenshot({
-    path: resolve('backend/docs/screenshots/academic-dashboard-mobile.png'),
+    path: resolve('backend/test-results/screenshots/academic-dashboard-mobile.png'),
     fullPage: true,
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({
-    path: resolve('backend/docs/screenshots/academic-dashboard-desktop.png'),
+    path: resolve('backend/test-results/screenshots/academic-dashboard-desktop.png'),
     fullPage: true,
   });
   await page.getByLabel('تصفية بالسنة').selectOption({ label: oldLabel + ' (مغلقة)' });

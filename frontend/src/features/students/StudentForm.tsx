@@ -6,6 +6,7 @@ import { SupervisorFields } from '../school/SupervisorFields';
 import { TalentEntryFields } from '../school/TalentEntryFields';
 const empty: NamedStudentInput = {
   name: '',
+  phoneNumber: '',
   grade: 'FIRST',
   classroom: '',
   primaryTalent: '',
@@ -41,6 +42,7 @@ export function StudentForm({
     const data = new FormData(event.currentTarget);
     const parsed = namedStudentSchema.safeParse({
       name: data.get('name'),
+      phoneNumber: data.get('phoneNumber'),
       grade: data.get('grade'),
       classroom: data.get('classroom'),
       primaryTalent: data.get('primaryTalent'),
@@ -51,7 +53,10 @@ export function StudentForm({
       supervisorOverrides: overrides,
     });
     if (!parsed.success) {
-      setError('تحقق من الحقول المطلوبة وحدود النصوص، ولا تكرر المواهب أو تتجاوز 10 مواهب إضافية.');
+      setError(
+        parsed.error.issues.find((issue) => issue.path[0] === 'phoneNumber')?.message ??
+          'تحقق من الحقول المطلوبة وحدود النصوص، ولا تكرر المواهب أو تتجاوز 10 مواهب إضافية.',
+      );
       return;
     }
     submitting.current = true;
@@ -72,6 +77,20 @@ export function StudentForm({
         <label className="field">
           اسم الطالب
           <input name="name" defaultValue={input.name} required minLength={2} maxLength={120} />
+        </label>
+        <label className="field">
+          رقم الجوال
+          <input
+            type="tel"
+            name="phoneNumber"
+            defaultValue={input.phoneNumber}
+            placeholder="05xxxxxxxx"
+            autoComplete="tel"
+            inputMode="tel"
+            dir="ltr"
+            maxLength={40}
+            required
+          />
         </label>
         <div className="form-row">
           <label className="field">

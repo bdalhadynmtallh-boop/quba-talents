@@ -1,29 +1,26 @@
 import { testCatalog } from '../../backend/tests/catalog.js';
 import { test, expect, type Page } from '@playwright/test';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { readFile, mkdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import dotenv from 'dotenv';
 import sharp from 'sharp';
-import { createDatabase } from '../../backend/src/plugins/database.js';
+import type { createDatabase } from '../../backend/src/plugins/database.js';
+import { startBrowserFixture } from '../../backend/tests/browser-fixture.js';
 import { hashPassword } from '../../backend/src/lib/password.js';
 import { LocalStorage } from '../../backend/src/services/storage/local.js';
 const prefix = `اختبار متصفح ${randomUUID().slice(0, 8)}`;
 const password = randomBytes(20).toString('base64url'),
   email = `browser-${randomUUID()}@example.test`;
+test.use({ baseURL: 'http://localhost:5189' });
+let fixture: Awaited<ReturnType<typeof startBrowserFixture>> | undefined;
 let db: ReturnType<typeof createDatabase>, storage: LocalStorage, adminId: string;
-const screenshotRoot = resolve('backend/docs/screenshots');
+const screenshotRoot = resolve('backend/test-results/screenshots');
 test.beforeAll(async () => {
-  if (process.env.BROWSER_TESTS_ALLOW_DB_WRITE !== 'yes')
-    throw new Error(
-      'Set BROWSER_TESTS_ALLOW_DB_WRITE=yes to allow temporary browser test records in the development database.',
-    );
-  const env = dotenv.parse(await readFile('backend/.env'));
-  if (env.NODE_ENV !== 'development' || !env.DATABASE_URL)
-    throw new Error('Browser suite is allowed only against local development configuration.');
-  db = createDatabase(env.DATABASE_URL);
+  fixture = await startBrowserFixture(5189, 3003);
+  db = fixture.db;
+  storage = fixture.storage;
   await testCatalog(db);
-  storage = new LocalStorage(resolve('backend', env.STORAGE_DIR ?? '.data/uploads'));
+  await db.supervisor.deleteMany({ where: { schoolId: 'school' } });
   const admin = await db.admin.create({
     data: {
       email,
@@ -54,7 +51,7 @@ test.afterAll(async () => {
     if (adminId) await tx.admin.deleteMany({ where: { id: adminId } });
   });
   await storage.maintain(db);
-  await db.$disconnect();
+  await fixture?.close();
 });
 async function login(page: Page) {
   await page.goto('/login');
@@ -68,6 +65,15 @@ async function noOverflow(page: Page) {
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true);
 }
+test('Expired administrative session removes private content immediately', async ({ page }) => {
+  await login(page);
+  await db.session.deleteMany({ where: { adminId } });
+  await page.getByRole('button', { name: 'طلبات التسجيل', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'ملفات الطلاب خاصة', exact: true })).toBeVisible();
+  await expect(page.locator('.registration-card')).toHaveCount(0);
+  await expect(page.locator('.student-card')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
 test('Desktop: registration, approval, student editing, works upload/deletion, settings and logout', async ({
   page,
 }) => {
@@ -91,6 +97,7 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   await expect(page.getByRole('heading', { name: 'ملفات الطلاب خاصة' })).toBeVisible();
   await page.goto('/register');
   await page.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} أحمد`);
+  await page.getByLabel('رقم الجوال', { exact: true }).fill('٠٥٠ ١٢٣ ٤٥٦٧');
   await page.getByLabel('الصف', { exact: true }).selectOption('SECOND');
   await page.getByLabel('الفصل', { exact: true }).fill('أ');
   await page.getByLabel('الموهبة الرئيسية', { exact: true }).fill('البرمجة');
@@ -107,6 +114,7 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
     .click();
   const review = page.getByRole('dialog', { name: 'مراجعة طلب التسجيل' });
   await expect(review.getByLabel('اسم الطالب', { exact: true })).toHaveValue(`${prefix} أحمد`);
+  await expect(review.getByLabel('رقم الجوال', { exact: true })).toHaveValue('0501234567');
   await review.getByRole('button', { name: 'قبول الطلب وإضافة الطالب' }).click();
   await expect(page.getByRole('dialog', { name: 'طلبات التسجيل' })).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
@@ -119,12 +127,15 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   await expect(page.getByRole('heading', { name: 'لم تُنشأ السيرة بعد' })).toBeVisible();
   await page.getByRole('button', { name: 'تعديل الطالب', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'تعديل الطالب' });
+  await expect(edit.getByLabel('رقم الجوال', { exact: true })).toHaveValue('0501234567');
+  await edit.getByLabel('رقم الجوال', { exact: true }).fill('+966501234568');
   await edit.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} أحمد معدل`);
   await edit.getByLabel('معلومات عن الطالب وإنجازاته').fill('نفّذ مشروعًا ضمن فريق المدرسة.');
   await edit.getByRole('button', { name: 'حفظ الطالب' }).click();
   await expect(
     page.getByRole('heading', { name: `${prefix} أحمد معدل`, exact: true, level: 1 }),
   ).toBeVisible();
+  await expect(page.locator('.student-summary')).toContainText('+966501234568');
   await page.getByRole('button', { name: 'أعمال الطالب', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'لم تُضف أعمال بعد' })).toBeVisible();
   await page.getByRole('button', { name: 'إضافة عمل', exact: true }).click();
@@ -179,7 +190,10 @@ test('Desktop: registration, approval, student editing, works upload/deletion, s
   await page.getByRole('button', { name: 'إعدادات المدرسة' }).click();
   const settings = page.getByRole('dialog', { name: 'إعدادات المدرسة' });
   await expect(settings.getByLabel('اسم المدرسة', { exact: true })).toBeVisible();
+  await settings.getByRole('button', { name: 'إضافة مشرف', exact: true }).click();
   await expect(settings.getByLabel('اسم المشرف 1', { exact: true })).toBeVisible();
+  await settings.getByLabel('اسم المشرف 1', { exact: true }).fill('مشرف اختبار');
+  await settings.getByLabel('مسمى المشرف 1', { exact: true }).fill('متابعة المواهب');
   await settings.getByRole('button', { name: 'حفظ الإعدادات' }).click();
   await expect(settings).toHaveCount(0);
   await page.getByRole('button', { name: 'حذف العمل مشروع متصفح تجريبي' }).click();
@@ -232,6 +246,7 @@ test('Mobile: system theme, persistent theme choice, keyboard modal and error st
   await noOverflow(page);
   await page.getByRole('button', { name: 'إضافة طالب', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'إضافة طالب' });
+  await dialog.locator('input[name=phoneNumber]').fill('0501234567');
   await dialog.getByLabel('اسم الطالب', { exact: true }).fill(`${prefix} جوال`);
   await dialog.getByLabel('الفصل', { exact: true }).fill('ب');
   await dialog.getByLabel('الموهبة الرئيسية', { exact: true }).fill('الرسم');

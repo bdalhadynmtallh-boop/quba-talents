@@ -240,7 +240,7 @@ test(
         const pdf = await client.request({ url: `/api/students/${id}/cv/pdf` });
         assert.equal(pdf.statusCode, 200, pdf.body.slice(0, 100));
         assert.match(String(pdf.headers['content-type']), /application\/pdf/);
-        const root = resolve('docs/pdf');
+        const root = resolve('backend/test-results/pdf');
         await mkdir(root, { recursive: true });
         await writeFile(resolve(root, 'single-short.pdf'), pdf.rawPayload);
         // The new development sections add a second page to this fixture.

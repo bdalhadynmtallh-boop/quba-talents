@@ -12,6 +12,14 @@
     "node": ">=24.0.0 <25",
     "npm": ">=11"
   },
+  "overrides": {
+    "@prisma/config@7.10.0": {
+      "deepmerge-ts": "8.0.2"
+    },
+    "prisma@7.10.0": {
+      "mysql2": "3.24.5"
+    }
+  },
   "scripts": {
     "dev": "npm run build -w @quba/shared && concurrently -k -n API,WEB \"npm run dev -w @quba/api\" \"npm run dev -w @quba/web\"",
     "build": "npm run build -w @quba/shared && npm run build -w @quba/api && npm run build -w @quba/web",
